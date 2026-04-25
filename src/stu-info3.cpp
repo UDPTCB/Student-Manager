@@ -168,6 +168,12 @@ std::vector<StuInfo3::StuInfo> StuInfo3::getAllStudent(sqlite3* db){
         students.push_back(s);
     }
     sqlite3_finalize(stmt);
+
+    std::stable_sort(students.begin(), students.end(), 
+    [](const StuInfo& a, const StuInfo& b) {
+        return a.id < b.id;  
+    });
+    
     return students;
 }
 
