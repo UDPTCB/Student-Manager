@@ -2,7 +2,7 @@
 
 A command-line student information management system written in C++.
 
-> **Latest Version:** 0.1.1-ALPHA
+> **Latest Version:** 0.1.2-ALPHA
 
 ---
 
@@ -11,7 +11,7 @@ A command-line student information management system written in C++.
 | Version | Status | Backend |
 |---|---|---|
 | 0.0.1-ALPHA | Available | JSON files (nlohmann/json) |
-| 0.1.1-ALPHA | Available | SQLite3 |
+| 0.1.2-ALPHA | Available | SQLite3 |
 
 At startup, you will be prompted to choose which version to run. Enter nothing to quit.
 
@@ -30,11 +30,10 @@ At startup, you will be prompted to choose which version to run. Enter nothing t
 ### Version 0.1.1-ALPHA
 - All student records stored in a SQLite3 database
 
----
-
-## Planned Features
-
-- **Score range statistics** (`Score_range`) — distribution analysis across score bands for scores out of 100, 120, and 150, coming in a future version
+### Version 0.1.2-ALPHA
+- All student records stored in a SQLite3 database
+- **Score range statistics** — distribution analysis across score bands (0–9, 10–19, … up to 150) for all 9 subjects, powered by the `SRFM` template functions in `Score_range.h`
+- Enhanced input validation with per-subject score limits (0–100, 0–120, or 0–150)
 
 ---
 
@@ -88,11 +87,22 @@ Version selection menu:
 
 ```
 1- 0.0.1-ALPHA
-2- 0.1.1-ALPHA
+2- 0.1.2-ALPHA
 Choose a version (Keep void to quit):
 ```
 
 Main menu (both versions):
+
+```
+1. Add Student
+2. Delete Student
+3. Edit Student
+4. View Student
+5. View All Students
+0. Exit
+```
+
+Main menu (0.1.2-alpha):
 
 ```
 1. Add Student
@@ -169,7 +179,7 @@ Example record:
 }
 ```
 
-### Version 0.1.1-ALPHA
+### Version 0.1.1-ALPHA / 0.1.2-ALPHA
 
 Records are stored in a SQLite3 database (`students.db`) created automatically in a `Student/` directory in the working directory.
 
@@ -182,23 +192,32 @@ Manager/
 ├── include/
 │   ├── config.h
 │   ├── json.hpp            # bundled nlohmann/json
-│   ├── Score_range.h       # future: score distribution feature
+│   ├── Score_range.h       # score distribution (v0.1.2-ALPHA)
 │   ├── sqlite3.h           # bundled SQLite3
 │   ├── stu-info.h          # v0.0.1-ALPHA
-│   └── stu-info3.hpp       # v0.1.1-ALPHA
+│   └── stu-info3.hpp       # v0.1.1-ALPHA / v0.1.2-ALPHA
 ├── out/                    # build output directory
 ├── src/
 │   ├── main.cpp
 │   ├── config.cpp
-│   ├── Score_range.cpp     # future: score distribution feature
+│   ├── Score_range.cpp     # score distribution (v0.1.2-ALPHA)
 │   ├── sqlite3.c           # bundled SQLite3
 │   ├── stu-info.cpp        # v0.0.1-ALPHA
-│   └── stu-info3.cpp       # v0.1.1-ALPHA
+│   └── stu-info3.cpp       # v0.1.1-ALPHA / v0.1.2-ALPHA
 └── CMakeLists.txt
 ```
 
 ---
 
-## License
+## Release
 
-This project is licensed under the GNU General Public License v2.0.
+### [manager-windows-amd_x64-0.1.2-alpha.exe](https://github.com/)
+
+> **Platform:** Windows 10 / 11 (AMD x64 only)
+
+This is the second public alpha build of Student Manager for Windows. The binary bundles both versions of the application:
+
+- **0.0.1-ALPHA** — JSON-based student records
+- **0.1.2-ALPHA** — SQLite3-based student records with score range statistics
+
+No installation required — extract the ZIP and run the
