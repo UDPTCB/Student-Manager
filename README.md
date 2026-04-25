@@ -201,4 +201,4 @@ Manager/
 
 ## License
 
-This project is currently in alpha. License TBD.
+This project is licensed under the GNU General Public License v2.0.
