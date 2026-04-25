@@ -110,6 +110,7 @@ Main menu (0.1.2-alpha):
 3. Edit Student
 4. View Student
 5. View All Students
+6. View all students score range
 0. Exit
 ```
 
