@@ -1,5 +1,36 @@
 #include "../include/stu-info3.hpp"
 
+void StuInfo3::scoreRangeShow(sqlite3* db){
+    StuInfo temp;
+    std::vector<StuInfo> sse = getAllStudent(db);
+    std::cout << "Chinese; Mathematics; English; Physics; Chemistry;"
+                        "\nBiology; Geography; History; Politics."
+            << std::endl;
+    std::cout << "Choose a subject: ";
+    std::string choo{};
+    int mode = 0;
+    std::getline(std::cin, choo);
+    std::transform(choo.begin(), choo.end(), choo.begin(), ::tolower);
+    if (!choo.empty() && choo.back() == ';') {
+        choo.pop_back();
+    }
+    if (choo == "chinese") mode = 0;
+    else if (choo == "mathematics") mode = 1;
+    else if (choo == "english") mode = 2;
+    else if (choo == "physics") mode = 3;
+    else if (choo == "chemistry") mode = 4;
+    else if (choo == "biology") mode = 5;
+    else if (choo == "geography") mode = 6;
+    else if (choo == "history") mode = 7;
+    else if (choo == "Politics") mode = 8;
+    else std::cout << "Invalid subject" << std::endl;;
+    if (SRFM::SRF_M(sse, mode, temp)){
+        std::cout << "Displayed successfully" << std::endl;
+    } else {
+        std::cout << "Failed to displayed" << std::endl;
+    }
+}
+
 void StuInfo3::enterStudent(StuInfo& newStu){
     std::cout << "ID: ";
     std::getline(std::cin, newStu.id);
@@ -9,16 +40,16 @@ void StuInfo3::enterStudent(StuInfo& newStu){
     std::getline(std::cin, newStu.class_value);
     std::cout << "Name: ";
     std::getline(std::cin, newStu.name);
-    enterNum("Age: ", newStu.age);
-    enterNum("Chinese score: ", newStu.Chinese_score);
-    enterNum("Mathematics score: ", newStu.Mathematics_score);
-    enterNum("English score: ", newStu.English_score);
-    enterNum("Physics score: ", newStu.Physics_score);
-    enterNum("Chemistry: ", newStu.Chemistry_score);
-    enterNum("Biology score: ", newStu.Biology_score);
-    enterNum("Geography score: ", newStu.Geography_score);
-    enterNum("History: ", newStu.History_score);
-    enterNum("Politics: ", newStu.Politics_score);
+    enterNum("Age: ", newStu.age, 0, 0);
+    enterNum("Chinese score: ", newStu.Chinese_score, 1, 1);
+    enterNum("Mathematics score: ", newStu.Mathematics_score, 1, 1);
+    enterNum("English score: ", newStu.English_score, 1, 1);
+    enterNum("Physics score: ", newStu.Physics_score, 1, 0);
+    enterNum("Chemistry: ", newStu.Chemistry_score, 1, 0);
+    enterNum("Biology score: ", newStu.Biology_score, 1, 0);
+    enterNum("Geography score: ", newStu.Geography_score, 1, 0);
+    enterNum("History: ", newStu.History_score, 1, 0);
+    enterNum("Politics: ", newStu.Politics_score, 1, 0);
 }
 
 
@@ -173,7 +204,6 @@ std::vector<StuInfo3::StuInfo> StuInfo3::getAllStudent(sqlite3* db){
     [](const StuInfo& a, const StuInfo& b) {
         return a.id < b.id;  
     });
-    
     return students;
 }
 
@@ -237,12 +267,12 @@ bool StuInfo3::editStudentByID(sqlite3* db, const std::string& id){
             if (!input.empty()) s.name = input;
         }
         else if (choice == "age") {
-            enterNum("New age: ", s.age);
+            enterNum("New age: ", s.age, 0, 0);
         }
         else if (choice == "scores") {
-            auto editScore = [&](const std::string& name, double& score) {
+            auto editScore = [&](const std::string& name, double& score, const int& m) {
                 std::cout << name << " (current: " << score << ")\n";
-                enterNum("New value: ", score);
+                enterNum("New value: ", score, 1, m);
             };
 
             std::cout << "Chinese; Mathematics; English; Physics; Chemistry;"
@@ -256,16 +286,16 @@ bool StuInfo3::editStudentByID(sqlite3* db, const std::string& id){
             std::transform(choosesss.begin(), choosesss.end(), choosesss.begin(), ::tolower);
             if (!choosesss.empty() && choosesss.back() == ';') choosesss.pop_back();
 
-            if      (choosesss == "chinese")     editScore("Chinese",     s.Chinese_score);
+            if      (choosesss == "chinese")     editScore("Chinese",     s.Chinese_score, 1);
             else if (choosesss == "mathematics" || choosesss == "math")
-                                                editScore("Mathematics", s.Mathematics_score);
-            else if (choosesss == "english")     editScore("English",     s.English_score);
-            else if (choosesss == "physics")     editScore("Physics",     s.Physics_score);
-            else if (choosesss == "chemistry")   editScore("Chemistry",   s.Chemistry_score);
-            else if (choosesss == "biology")     editScore("Biology",     s.Biology_score);
-            else if (choosesss == "geography")   editScore("Geography",   s.Geography_score);
-            else if (choosesss == "history")     editScore("History",     s.History_score);
-            else if (choosesss == "politics")    editScore("Politics",    s.Politics_score);
+                                                editScore("Mathematics", s.Mathematics_score, 1);
+            else if (choosesss == "english")     editScore("English",     s.English_score, 1);
+            else if (choosesss == "physics")     editScore("Physics",     s.Physics_score, 0);
+            else if (choosesss == "chemistry")   editScore("Chemistry",   s.Chemistry_score, 0);
+            else if (choosesss == "biology")     editScore("Biology",     s.Biology_score, 0);
+            else if (choosesss == "geography")   editScore("Geography",   s.Geography_score, 0);
+            else if (choosesss == "history")     editScore("History",     s.History_score, 0);
+            else if (choosesss == "politics")    editScore("Politics",    s.Politics_score, 0);
             else    std::cout << "Invalid subject.\n";
         }
         else {
@@ -333,6 +363,7 @@ int StuInfo3::run(){
     std::cout << "3. Edit Student" << std::endl;
     std::cout << "4. View Student" << std::endl;
     std::cout << "5. View All Students" << std::endl;
+    std::cout << "6. View all students score range" << std::endl;
     std::cout << "0. Exit" << std::endl;
     std::string choice;
     while(true){
@@ -396,6 +427,9 @@ int StuInfo3::run(){
             else {
                 std::cout << "Student not found" << std::endl;
             }
+        }
+        else if (choice == "6"){
+            scoreRangeShow(db);
         }
         else if (choice == "0"){
             break;

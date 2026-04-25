@@ -14,7 +14,7 @@ int Main::run(int argc, char **argv){
     std::string choice;
 
     while(true){
-        std::cout << "1- 0.0.1-ALPHA\n2- 0.1.1-ALPHA" << std::endl;
+        std::cout << "1- 0.0.1-ALPHA\n2- 0.1.2-ALPHA" << std::endl;
         std::cout << "Choose a version(Keep void to quit): ";
         std::getline(std::cin, choice);
         if (choice == "1" || choice == "1-"){

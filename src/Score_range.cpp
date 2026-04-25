@@ -5,6 +5,8 @@ Score_range::Score_range()
       grade(0){}
 
 
+
+
 void Score_range::SRF(){
     SR.assign(11, 0);
     while(std::cin >> grade){

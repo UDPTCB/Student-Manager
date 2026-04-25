@@ -1,7 +1,8 @@
 #ifndef STUDENT3_HPP
 #define STUDENT3_HPP
-#define STUINFO_VERSION "0.1.1-ALPHA"
+#define STUINFO_VERSION "0.1.2-ALPHA"
 #include "./sqlite3.h"
+#include "./Score_range.h"
 #include <string>
 #include <iostream>
 #include <filesystem>
@@ -31,24 +32,62 @@ namespace StuInfo3 {
     bool SelectStudentByID(sqlite3* db, const std::string& id, StuInfo& outStudent);
     std::vector<StuInfo> getAllStudent(sqlite3* db);
     bool deleteStudentByID(sqlite3* db, const std::string& id);
-    // stu-info3.hpp
     bool editStudentByID(sqlite3* db, const std::string& id);
     void printStudent(const StuInfo& s);
+    void scoreRangeShow(sqlite3* db);
     void enterStudent(StuInfo& newStu);
+    
     int run();
 
     template<typename S>
-    void enterNum(const std::string& p, S& v){
+    void enterNum(const std::string& p, S& v, const int m, const int n){
         while(true){
             std::cout << p;
-            if (std::cin >> v){
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                break;
+            if (m == 0){
+                if (std::cin >> v){
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    break;
+                }
+                else{
+                    std::cout << "Invalid enter, try again. \n";
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                }
             }
-            else{
-                std::cout << "Invalid enter, try agin.\n";
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            else {
+                if (n == 0){
+                    if (std::cin >> v && v <= 100 && v >= 0){
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        break;
+                    }
+                    else{
+                        std::cout << "Invalid enter, try again ";
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    }
+                }
+                else if (n == 1){
+                    if (std::cin >> v && v <= 120 && v >= 0){
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        break;
+                    }
+                    else{
+                        std::cout << "Invalid enter, try again ";
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    }
+                }
+                else if (n == 2){
+                    if (std::cin >> v && v <= 150 && v >= 0){
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        break;
+                    }
+                    else{
+                        std::cout << "Invalid enter, try again ";
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    }
+                }
             }
         }
     }
