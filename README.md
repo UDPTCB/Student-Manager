@@ -44,7 +44,7 @@ At startup, you will be prompted to choose which version to run. Enter nothing t
 |---|---|
 | [nlohmann/json](https://github.com/nlohmann/json) (`json.hpp`) | JSON serialization/deserialization (v0.0.1-ALPHA) |
 | [SQLite3](https://www.sqlite.org/) (`sqlite3.h` / `sqlite3.c`) | Database backend (v0.1.1-ALPHA) |
-| [libsodium](https://doc.libsodium.org/) | Cryptography |
+
 | C++17 standard library (`std::filesystem`, `std::format`) | File, directory management, and string formatting |
 
 > `json.hpp`, `sqlite3.h`, and `sqlite3.c` are bundled directly in the project — no separate installation needed.
@@ -55,7 +55,6 @@ At startup, you will be prompted to choose which version to run. Enter nothing t
 
 - C++20 or later
 - CMake 3.15+
-- libsodium
 - MinGW-w64 / MSYS2 (Windows) or GCC (Linux/macOS)
 
 ---
