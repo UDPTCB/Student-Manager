@@ -2,23 +2,39 @@
 
 A command-line student information management system written in C++.
 
-> **Version:** 0.0.1-ALPHA
+> **Latest Version:** 0.1.1-ALPHA
+
+---
+
+## Versions
+
+| Version | Status | Backend |
+|---|---|---|
+| 0.0.1-ALPHA | Available | JSON files (nlohmann/json) |
+| 0.1.1-ALPHA | Available | SQLite3 |
+
+At startup, you will be prompted to choose which version to run. Enter nothing to quit.
 
 ---
 
 ## Features
 
 - Add, view, edit, and delete student records
-- Each student record stored as an individual JSON file (powered by [nlohmann/json](https://github.com/nlohmann/json))
 - Tracks 9 subjects per student: Chinese, Mathematics, English, Physics, Chemistry, Biology, Geography, History, and Politics
 - Input validation for all numeric fields (age, scores)
 - Records sorted by student ID when viewing all
+
+### Version 0.0.1-ALPHA
+- Each student record stored as an individual JSON file (powered by [nlohmann/json](https://github.com/nlohmann/json))
+
+### Version 0.1.1-ALPHA
+- All student records stored in a SQLite3 database
 
 ---
 
 ## Planned Features
 
-- **Score range statistics** (`Score_range`) — distribution analysis across score bands (0–10, 11–20, … 91–100), coming in a future version
+- **Score range statistics** (`Score_range`) — distribution analysis across score bands for scores out of 100, 120, and 150, coming in a future version
 
 ---
 
@@ -26,17 +42,20 @@ A command-line student information management system written in C++.
 
 | Dependency | Purpose |
 |---|---|
-| [nlohmann/json](https://github.com/nlohmann/json) (`json.hpp`) | JSON serialization/deserialization for student records |
-| C++17 standard library (`std::filesystem`) | File and directory management |
+| [nlohmann/json](https://github.com/nlohmann/json) (`json.hpp`) | JSON serialization/deserialization (v0.0.1-ALPHA) |
+| [SQLite3](https://www.sqlite.org/) (`sqlite3.h` / `sqlite3.c`) | Database backend (v0.1.1-ALPHA) |
+| [libsodium](https://doc.libsodium.org/) | Cryptography |
+| C++17 standard library (`std::filesystem`, `std::format`) | File, directory management, and string formatting |
 
-> `json.hpp` is bundled directly in `include/` — no separate installation needed.
+> `json.hpp`, `sqlite3.h`, and `sqlite3.c` are bundled directly in the project — no separate installation needed.
 
 ---
 
 ## Requirements
 
-- C++17 or later
+- C++20 or later
 - CMake 3.15+
+- libsodium
 - MinGW-w64 / MSYS2 (Windows) or GCC (Linux/macOS)
 
 ---
@@ -45,16 +64,16 @@ A command-line student information management system written in C++.
 
 ```bash
 # Configure
-cmake -S . -B out/build/x64-release
+cmake -S . -B out/build
 
 # Build
-cmake --build out/build/x64-release
+cmake --build out/build
 ```
 
 Clean rebuild:
 
 ```bash
-cmake --build out/build/x64-release --clean-first
+cmake --build out/build --clean-first
 ```
 
 ---
@@ -66,7 +85,15 @@ cmake --build out/build/x64-release --clean-first
 manager.exe      # Windows
 ```
 
-Main menu:
+Version selection menu:
+
+```
+1- 0.0.1-ALPHA
+2- 0.1.1-ALPHA
+Choose a version (Keep void to quit):
+```
+
+Main menu (both versions):
 
 ```
 1. Add Student
@@ -83,7 +110,7 @@ Main menu:
 |---|---|
 | Grade | String |
 | Class | String |
-| ID | String (used as filename) |
+| ID | String |
 | Name | String |
 | Age | Integer |
 | Chinese Score | Double |
@@ -106,11 +133,13 @@ grade / class / id / name / age / scores
 
 Selecting `scores` walks through all 9 subjects, showing the current value before each prompt.
 
-> **Note:** Changing a student's ID also renames their JSON file on disk.
+> **Note (v0.0.1-ALPHA):** Changing a student's ID also renames their JSON file on disk.
 
 ---
 
 ## Data Storage
+
+### Version 0.0.1-ALPHA
 
 Records are saved as JSON files under a `Student/` directory, created automatically in the working directory:
 
@@ -141,22 +170,31 @@ Example record:
 }
 ```
 
+### Version 0.1.1-ALPHA
+
+Records are stored in a SQLite3 database (`students.db`) created automatically in a `Student/` directory in the working directory.
+
 ---
 
 ## Project Structure
 
 ```
-.
+Manager/
 ├── include/
 │   ├── config.h
-│   ├── json.hpp          # bundled nlohmann/json
-│   ├── Score_range.h     # future: score distribution feature
-│   └── stu-info.h
+│   ├── json.hpp            # bundled nlohmann/json
+│   ├── Score_range.h       # future: score distribution feature
+│   ├── sqlite3.h           # bundled SQLite3
+│   ├── stu-info.h          # v0.0.1-ALPHA
+│   └── stu-info3.hpp       # v0.1.1-ALPHA
+├── out/                    # build output directory
 ├── src/
 │   ├── main.cpp
 │   ├── config.cpp
-│   ├── Score_range.cpp   # future: score distribution feature
-│   └── stu-info.cpp
+│   ├── Score_range.cpp     # future: score distribution feature
+│   ├── sqlite3.c           # bundled SQLite3
+│   ├── stu-info.cpp        # v0.0.1-ALPHA
+│   └── stu-info3.cpp       # v0.1.1-ALPHA
 └── CMakeLists.txt
 ```
 
