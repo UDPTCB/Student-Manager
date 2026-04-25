@@ -14,16 +14,12 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 add_executable(manager
         src/main.cpp
         src/config.cpp
-        #src/configure.cpp
-        #src/Hex_Dec.cpp
         src/Score_range.cpp
         src/stu-info.cpp
-        
+        src/stu-info3.cpp
+        src/sqlite3.c
 
-        #include/configure.h
-        #include/Sales_data.h
-        #include/Sales_item.h
-        #include/config.h
+        
 )
 
 #find_package(sodium REQUIRED)

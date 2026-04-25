@@ -1,5 +1,5 @@
 #include "../include/stu-info.h"
-
+#include "../include/Score_range.h" 
 template<typename T>
 void readNumberStrict(const std::string& prompt, T& value) {
     while (true) {
@@ -15,6 +15,14 @@ void readNumberStrict(const std::string& prompt, T& value) {
         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     }
 }
+StudentInfo::StudentInfo()
+    : easter_egg("It would be too easy to tell them..."
+                 "Too strong for this dream."
+                 "To tell them how to live is prevent them living."
+                 "I will not tell the player how to live."
+        
+        )
+    {}
 
 void StudentInfo::to_json(nlohmann::json& j, const StuInfo& s){
     j = nlohmann::json{
@@ -74,7 +82,7 @@ int StudentInfo::run(){
     std::cout << "Version: " << VERSION << std::endl;
     std::cout << std::endl;
     std::cout << "\033[0m";
-
+    std::cout << "\nWorkplace: " << std::filesystem::current_path() << std::endl;
     std::cout << "\nWelcome to the Student Information Management System!\n" << std::endl;
     std::cout << "Please select an option:" << std::endl;
     std::cout << "1. Add Student" << std::endl;
@@ -102,6 +110,8 @@ int StudentInfo::run(){
         } else if (choice == "0") {
             std::cout << "Exiting the system. Goodbye!" << std::endl;
             break;
+        } else if (choice == "MC") {
+            std::cout << easter_egg << std::endl;
         } else {
             std::cout << "Invalid choice. Please try again." << std::endl;
         }
@@ -149,6 +159,9 @@ void StudentInfo::add_student(){
         std::filesystem::create_directory(student_dir);
     }
 
+    
+
+
     std::filesystem::path file_path = student_dir / (new_student.id + ".json");
     std::ofstream file(file_path, std::ios::out);
     if (!file.is_open()){
@@ -163,10 +176,19 @@ void StudentInfo::add_student(){
 
 void StudentInfo::view_student(){
     std::string student_id;
+    std::cout << "Grade of the student to view: ";
+    std::string grade;
+    std::getline(std::cin, grade);
+    std::cout << "Class of the student to view: ";
+    std::string class_value;
+    std::getline(std::cin, class_value);
     std::cout << "Enter the student ID to view: ";
     std::getline(std::cin, student_id);
     std::filesystem::path exe_path = std::filesystem::current_path();
     std::filesystem::path student_dir = exe_path / "Student";
+
+    
+
     std::filesystem::path file_path = student_dir / (student_id + ".json");
     if (!std::filesystem::exists(file_path)) {
         std::cout << "Student with ID " << student_id << " not found." << std::endl;
@@ -208,6 +230,11 @@ void StudentInfo::view_all_students(){
         std::cout << "No students found." << std::endl;
         return;
     }
+
+    
+
+
+
     std::vector<StuInfo> students;
     for (const auto& entry : std::filesystem::directory_iterator(student_dir)) {
         if (entry.is_regular_file() && entry.path().extension() == ".json") {
@@ -331,21 +358,33 @@ void StudentInfo::edit_student(){
         readNumberStrict("New age: ", s.age);
     }
     else if (choice == "scores") {
-
         auto editScore = [&](const std::string& name, double& score) {
             std::cout << name << " (current: " << score << ")\n";
             readNumberStrict("New value: ", score);
         };
 
-        editScore("Chinese", s.Chinese_score);
-        editScore("Math", s.Mathematics_score);
-        editScore("English", s.English_score);
-        editScore("Physics", s.Physics_score);
-        editScore("Chemistry", s.Chemistry_score);
-        editScore("Biology", s.Biology_score);
-        editScore("Geography", s.Geography_score);
-        editScore("History", s.History_score);
-        editScore("Politics", s.Politics_score);
+        std::cout << "Chinese; Mathematics; English; Physics; Chemistry;"
+                    "\nBiology; Geography; History; Politics."
+        << std::endl;
+        std::cout << "Choose subject: ";
+        std::string choosesss;
+        std::getline(std::cin, choosesss);
+
+        // normalize input: lowercase and strip trailing semicolon
+        std::transform(choosesss.begin(), choosesss.end(), choosesss.begin(), ::tolower);
+        if (!choosesss.empty() && choosesss.back() == ';') choosesss.pop_back();
+
+        if      (choosesss == "chinese")     editScore("Chinese",     s.Chinese_score);
+        else if (choosesss == "mathematics" || choosesss == "math")
+                                            editScore("Mathematics", s.Mathematics_score);
+        else if (choosesss == "english")     editScore("English",     s.English_score);
+        else if (choosesss == "physics")     editScore("Physics",     s.Physics_score);
+        else if (choosesss == "chemistry")   editScore("Chemistry",   s.Chemistry_score);
+        else if (choosesss == "biology")     editScore("Biology",     s.Biology_score);
+        else if (choosesss == "geography")   editScore("Geography",   s.Geography_score);
+        else if (choosesss == "history")     editScore("History",     s.History_score);
+        else if (choosesss == "politics")    editScore("Politics",    s.Politics_score);
+        else    std::cout << "Invalid subject.\n";
     }
     else {
         std::cout << "Invalid choice\n";

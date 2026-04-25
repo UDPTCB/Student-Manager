@@ -11,5 +11,7 @@ private:
 public:
     Score_range();
     void SRF();
+    void SRF_120();
+    void SRF_150();
 };
 #endif // SCORE_RANGE_H

@@ -2,6 +2,7 @@
 #define STUINFO_H
 #define VERSION "0.0.1-ALPHA"
 #include "./json.hpp"
+
 #include <string>
 #include <iostream>
 #include <fstream>
@@ -27,7 +28,9 @@ private:
         double History_score;
         double Politics_score;
     };
+    std::string easter_egg;
 public:
+    StudentInfo();
     void to_json(nlohmann::json& j, const StuInfo& s);
     void from_json(const nlohmann::json& j, StuInfo& s);
     void add_student();
