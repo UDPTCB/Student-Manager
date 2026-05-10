@@ -265,4 +265,4 @@ Manager/
 
 ## License
 
-[GPL-2.0](LICENSE)
+[GPL-3.0](LICENSE)
