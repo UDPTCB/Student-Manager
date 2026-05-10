@@ -46,3 +46,41 @@ add_executable(manager
 
         ${APP_ICON_RESOURCE}
 )
+
+
+install(TARGETS manager
+    RUNTIME DESTINATION bin
+)
+
+
+include(InstallRequiredSystemLibraries)
+
+set(CPACK_PACKAGE_NAME "StudentManager")
+set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Student Information Management System - command line tool")
+set(CPACK_PACKAGE_VENDOR "Yvhang Cai")
+set(CPACK_PACKAGE_CONTACT "jeffrey_miller_GD@outlook.com")
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.txt")
+    set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.txt")
+endif()
+
+if(WIN32)
+    set(CPACK_GENERATOR "NSIS")
+    set(CPACK_NSIS_PACKAGE_NAME "Student Manager")
+    set(CPACK_NSIS_DISPLAY_NAME "Student Manager")
+    set(CPACK_NSIS_CONTACT "jeffrey_miller_GD@outlook.com")
+    set(CPACK_NSIS_MODIFY_PATH ON)  
+    
+   
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/resources/myapp.ico")
+        set(CPACK_NSIS_MUI_ICON "${CMAKE_CURRENT_SOURCE_DIR}/resources/myapp.ico")
+        set(CPACK_NSIS_MUI_UNIICON "${CMAKE_CURRENT_SOURCE_DIR}/resources/myapp.ico")
+    endif()
+endif()
+
+if(UNIX AND NOT APPLE)
+    set(CPACK_GENERATOR "TGZ")  
+endif()
+
+include(CPack)
