@@ -1,88 +1,160 @@
 #ifndef STUDENT3_HPP
 #define STUDENT3_HPP
-#define STUINFO_VERSION "0.1.2-ALPHA"
+#define STUINFO_VERSION "0.1.3-ALPHA"
 #include "./sqlite3.h"
 #include "./Score_range.h"
+#include "./logger.hpp"
+#include "./exePath.h"
 #include <string>
 #include <iostream>
 #include <filesystem>
 #include <format>
 #include <vector>
 #include <algorithm>
-namespace StuInfo3 {
-    struct StuInfo {
-        std::string grade;
-        std::string class_value;
-        std::string id;
-        std::string name;
-        int age;
-        double Chinese_score;
-        double Mathematics_score;
-        double English_score;
-        double Physics_score;
-        double Chemistry_score;
-        double Biology_score;
-        double Geography_score;
-        double History_score;
-        double Politics_score;
+#include <limits>
+#include <stdexcept>
+
+
+
+class Statement {
+private:
+    sqlite3_stmt* stmt = nullptr;
+public:
+    Statement(sqlite3* db, const char* sql){
+        if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+            stmt = nullptr;
+            throw std::runtime_error("Error preparing statement: " + std::string(sqlite3_errmsg(db)));
+            
+        }
+    }
+
+    ~Statement() {
+        if (stmt) {
+            sqlite3_finalize(stmt);
+        }
+    }
+    Statement(const Statement&) = delete;
+    Statement& operator=(const Statement&) = delete;
+    sqlite3_stmt* get() const { return stmt; }
+};
+
+
+
+
+class Transaction {
+private:
+    sqlite3* db;
+    bool committed = false;
+
+public:
+    Transaction(sqlite3* database) : db(database) {
+        sqlite3_exec(db, "BEGIN TRANSACTION;", nullptr, nullptr, nullptr);
+    }
+
+    void commit() {
+        sqlite3_exec(db, "COMMIT;", nullptr, nullptr, nullptr);
+        committed = true;
+    }
+
+    ~Transaction() {
+        if (!committed) {
+            sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
+        }
+    }
+};
+class StuInfo3 {
+public:
+    struct Student {
+        std::string grade{};
+        std::string class_value{};
+        std::string id{};
+        std::string name{};
+        int age{};
+        double Chinese_score{};
+        double Mathematics_score{};
+        double English_score{};
+        double Physics_score{};
+        double Chemistry_score{};
+        double Biology_score{};
+        double Geography_score{};
+        double History_score{};
+        double Politics_score{};
     };
-
-    bool createTable(sqlite3* db);
-    bool insertStudent(sqlite3* db, const StuInfo& student);
-    bool SelectStudentByID(sqlite3* db, const std::string& id, StuInfo& outStudent);
-    std::vector<StuInfo> getAllStudent(sqlite3* db);
-    bool deleteStudentByID(sqlite3* db, const std::string& id);
-    bool editStudentByID(sqlite3* db, const std::string& id);
-    void printStudent(const StuInfo& s);
-    void scoreRangeShow(sqlite3* db);
-    void enterStudent(StuInfo& newStu);
     
-    int run();
+    // Constructor / Destructor
+    StuInfo3();
+    StuInfo3(const std::filesystem::path& path);
+    ~StuInfo3();
 
-    template<typename S>
-    void enterNum(const std::string& p, S& v, const int m, const int n){
-        while(true){
-            std::cout << p;
-            if (m == 0){
-                if (std::cin >> v){
+    // Database operations
+    bool openDatabase(const std::filesystem::path& dbPath);
+    void closeDatabase();
+    bool isOpen() const { return db != nullptr; }
+
+    // CRUD operations
+    bool createTable();
+    bool insertStudent(const Student& student);
+    bool insertStudents(const std::vector<Student>& students);
+    bool selectStudentByID(const std::string& id, Student& outStudent);
+    std::vector<Student> getAllStudent();
+    bool deleteStudentByID(const std::string& id);
+    bool editStudentByID(const std::string& id);
+    
+    // Display operations
+    void printStudent(const Student& s) const;
+    void scoreRangeShow();
+
+    // Input operations
+    void enterStudent(Student& newStu);
+
+    // Static utility functions (e.g. for log file naming)
+    static std::string getVersion() { return STUINFO_VERSION; }
+    static std::string getCurrentTime();
+    static std::string getTimestampForFilename();
+
+    std::string easter_egg;
+private:
+    sqlite3* db = nullptr;
+    std::filesystem::path currentDbPath;
+
+    // Internal helper function
+    template<typename T>
+    void enterNum(const std::string& prompt, T& value, int mode, int limit = 0) {
+        while (true) {
+            std::cout << prompt;
+            if (mode == 0) {
+                if (std::cin >> value) {
                     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                     break;
-                }
-                else{
+                } else {
                     std::cout << "Invalid enter, try again. \n";
                     std::cin.clear();
                     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 }
-            }
-            else {
-                if (n == 0){
-                    if (std::cin >> v && v <= 100 && v >= 0){
+            } else {
+                if (limit == 0) {
+                    if (std::cin >> value && value <= 100 && value >= 0) {
                         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                         break;
-                    }
-                    else{
+                    } else {
                         std::cout << "Invalid enter, try again ";
                         std::cin.clear();
                         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                     }
-                }
-                else if (n == 1){
-                    if (std::cin >> v && v <= 120 && v >= 0){
+                } else if (limit == 1) {
+                    if (std::cin >> value && value <= 120 && value >= 0) {
                         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                         break;
-                    }
-                    else{
+                    } else {
                         std::cout << "Invalid enter, try again ";
                         std::cin.clear();
                         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                     }
-                }
-                else if (n == 2){
-                    if (std::cin >> v && v <= 150 && v >= 0){
+                } else if (limit == 2) {
+                    if (std::cin >> value && value <= 150 && value >= 0) {
                         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                         break;
-                    }
-                    else{
+                    } else {
                         std::cout << "Invalid enter, try again ";
                         std::cin.clear();
                         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
@@ -91,7 +163,26 @@ namespace StuInfo3 {
             }
         }
     }
-}
+};
+
+class impOrExp {
+private:
+    StuInfo3 from;
+    StuInfo3 to;
+public:
+    impOrExp(const StuInfo3& from, const StuInfo3& to) : from(from), to(to) {}
+    impOrExp() = default;
+    ~impOrExp() = default;
+    bool importFromDB(const std::filesystem::path& fmPath, const std::filesystem::path& toPath);
+    bool exportToDB(const std::filesystem::path& fmPath, const std::filesystem::path& toPath);
+    bool runapp();
+};
+
+
+// Standalone function (not a member of StuInfo3)
+namespace stu{
+    int runStuInfo3(logger& log);
+};
 
 
 #endif

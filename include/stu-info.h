@@ -2,7 +2,7 @@
 #define STUINFO_H
 #define VERSION "0.0.1-ALPHA"
 #include "./json.hpp"
-
+#include "./exePath.h"
 #include <string>
 #include <iostream>
 #include <fstream>

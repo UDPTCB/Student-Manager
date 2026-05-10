@@ -1,59 +1,66 @@
 #include "../include/stu-info3.hpp"
 
-void StuInfo3::scoreRangeShow(sqlite3* db){
-    StuInfo temp;
-    std::vector<StuInfo> sse = getAllStudent(db);
-    std::cout << "Chinese; Mathematics; English; Physics; Chemistry;"
-                        "\nBiology; Geography; History; Politics."
-            << std::endl;
-    std::cout << "Choose a subject: ";
-    std::string choo{};
-    int mode = 0;
-    std::getline(std::cin, choo);
-    std::transform(choo.begin(), choo.end(), choo.begin(), ::tolower);
-    if (!choo.empty() && choo.back() == ';') {
-        choo.pop_back();
+// ── Static utility functions ──────────────────────────────────────────────────
+
+std::string StuInfo3::getCurrentTime() {
+    auto now = std::chrono::system_clock::now();
+    auto local_time = std::chrono::zoned_time{std::chrono::current_zone(), now};
+    return std::format("{:%Y-%m-%d %H:%M:%S}", local_time);
+}
+
+std::string StuInfo3::getTimestampForFilename() {
+    auto now = std::chrono::system_clock::now();
+    auto local_time = std::chrono::zoned_time{std::chrono::current_zone(), now};
+    return std::format("{:%Y%m%d}", local_time);
+}
+
+// ── Constructor / Destructor ──────────────────────────────────────────────────
+
+StuInfo3::StuInfo3() : db(nullptr), easter_egg{
+    "\t\aIt would be too easy to tell them...\n"
+    "\tToo strong for this dream.\n"
+    "\tTo tell them how to live is prevent them living.\n"
+    "\tI will not tell the player how to live.\n"
+} {}
+StuInfo3::StuInfo3(const std::filesystem::path& path) : db(nullptr), easter_egg{
+    "\t\aIt would be too easy to tell them...\n"
+    "\tToo strong for this dream.\n"
+    "\tTo tell them how to live is prevent them living.\n"
+    "\tI will not tell the player how to live.\n"
+} {
+    openDatabase(path);
+}
+StuInfo3::~StuInfo3() {
+    closeDatabase();
+}
+
+// ── Database operations ───────────────────────────────────────────────────────
+
+bool StuInfo3::openDatabase(const std::filesystem::path& dbPath) {
+    currentDbPath = dbPath;
+
+    auto parentDir = dbPath.parent_path();
+    if (!parentDir.empty() && !std::filesystem::exists(parentDir)) {
+        std::filesystem::create_directories(parentDir);
     }
-    if (choo == "chinese") mode = 0;
-    else if (choo == "mathematics") mode = 1;
-    else if (choo == "english") mode = 2;
-    else if (choo == "physics") mode = 3;
-    else if (choo == "chemistry") mode = 4;
-    else if (choo == "biology") mode = 5;
-    else if (choo == "geography") mode = 6;
-    else if (choo == "history") mode = 7;
-    else if (choo == "Politics") mode = 8;
-    else std::cout << "Invalid subject" << std::endl;;
-    if (SRFM::SRF_M(sse, mode, temp)){
-        std::cout << "Displayed successfully" << std::endl;
-    } else {
-        std::cout << "Failed to displayed" << std::endl;
+
+    if (sqlite3_open(dbPath.string().c_str(), &db) != SQLITE_OK) {
+        std::cerr << "Failed to open database: " << sqlite3_errmsg(db) << std::endl;
+        return false;
+    }
+    return true;
+}
+
+void StuInfo3::closeDatabase() {
+    if (db) {
+        sqlite3_close(db);
+        db = nullptr;
     }
 }
 
-void StuInfo3::enterStudent(StuInfo& newStu){
-    std::cout << "ID: ";
-    std::getline(std::cin, newStu.id);
-    std::cout << "Grade: ";
-    std::getline(std::cin, newStu.grade);
-    std::cout << "Class: ";
-    std::getline(std::cin, newStu.class_value);
-    std::cout << "Name: ";
-    std::getline(std::cin, newStu.name);
-    enterNum("Age: ", newStu.age, 0, 0);
-    enterNum("Chinese score: ", newStu.Chinese_score, 1, 1);
-    enterNum("Mathematics score: ", newStu.Mathematics_score, 1, 1);
-    enterNum("English score: ", newStu.English_score, 1, 1);
-    enterNum("Physics score: ", newStu.Physics_score, 1, 0);
-    enterNum("Chemistry: ", newStu.Chemistry_score, 1, 0);
-    enterNum("Biology score: ", newStu.Biology_score, 1, 0);
-    enterNum("Geography score: ", newStu.Geography_score, 1, 0);
-    enterNum("History: ", newStu.History_score, 1, 0);
-    enterNum("Politics: ", newStu.Politics_score, 1, 0);
-}
+// ── CRUD ──────────────────────────────────────────────────────────────────────
 
-
-bool StuInfo3::createTable(sqlite3* db){
+bool StuInfo3::createTable() {
     const char* sql = R"(
         CREATE TABLE IF NOT EXISTS students (
             id TEXT PRIMARY KEY,
@@ -73,7 +80,7 @@ bool StuInfo3::createTable(sqlite3* db){
         );
     )";
     char* errMsg = nullptr;
-    if (sqlite3_exec(db, sql, nullptr, nullptr, &errMsg) != SQLITE_OK){
+    if (sqlite3_exec(db, sql, nullptr, nullptr, &errMsg) != SQLITE_OK) {
         std::cerr << "Error creating table: " << errMsg << std::endl;
         sqlite3_free(errMsg);
         return false;
@@ -81,161 +88,136 @@ bool StuInfo3::createTable(sqlite3* db){
     return true;
 }
 
-bool StuInfo3::insertStudent(sqlite3* db, const StuInfo& student){
+bool StuInfo3::insertStudent(const Student& student) {
     const char* sql = R"(
         INSERT OR REPLACE INTO students (
             id, grade, class_value, name, age,
             Chinese_score, Mathematics_score, English_score,
             Physics_score, Chemistry_score, Biology_score,
             Geography_score, History_score, Politics_score
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-        
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     )";
-    sqlite3_stmt* stmt;
-    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK){
-        std::cerr << "Error preparing statement: " << sqlite3_errmsg(db) << std::endl;
-        return false;
-    }
-    sqlite3_bind_text(stmt, 1, student.id.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 2, student.grade.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 3, student.class_value.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 4, student.name.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_int(stmt, 5, student.age);
-    sqlite3_bind_double(stmt, 6, student.Chinese_score);
-    sqlite3_bind_double(stmt, 7, student.Mathematics_score);
-    sqlite3_bind_double(stmt, 8, student.English_score);
-    sqlite3_bind_double(stmt, 9, student.Physics_score);
-    sqlite3_bind_double(stmt, 10, student.Chemistry_score);
-    sqlite3_bind_double(stmt, 11, student.Biology_score);
-    sqlite3_bind_double(stmt, 12, student.Geography_score);
-    sqlite3_bind_double(stmt, 13, student.History_score);
-    sqlite3_bind_double(stmt, 14, student.Politics_score);
+    Statement stmt(db, sql);
+    
 
-    if (sqlite3_step(stmt) != SQLITE_DONE){
+    sqlite3_bind_text(stmt.get(), 1, student.id.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt.get(), 2, student.grade.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt.get(), 3, student.class_value.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt.get(), 4, student.name.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt.get(), 5, student.age);
+    sqlite3_bind_double(stmt.get(), 6, student.Chinese_score);
+    sqlite3_bind_double(stmt.get(), 7, student.Mathematics_score);
+    sqlite3_bind_double(stmt.get(), 8, student.English_score);
+    sqlite3_bind_double(stmt.get(), 9, student.Physics_score);
+    sqlite3_bind_double(stmt.get(), 10, student.Chemistry_score);
+    sqlite3_bind_double(stmt.get(), 11, student.Biology_score);
+    sqlite3_bind_double(stmt.get(), 12, student.Geography_score);
+    sqlite3_bind_double(stmt.get(), 13, student.History_score);
+    sqlite3_bind_double(stmt.get(), 14, student.Politics_score);
+
+    if (sqlite3_step(stmt.get()) != SQLITE_DONE) {
         std::cerr << "Error inserting student: " << sqlite3_errmsg(db) << std::endl;
-        sqlite3_finalize(stmt);
         return false;
     }
 
-    sqlite3_finalize(stmt);
     std::cout << "Student inserted successfully!" << std::endl;
     return true;
 }
 
-bool StuInfo3::SelectStudentByID(sqlite3* db, const std::string& id, StuInfo& outStudent){
+bool StuInfo3::selectStudentByID(const std::string& id, Student& outStudent) {
     const char* sql = "SELECT grade, class_value, id, name, age, "
                       "Chinese_score, Mathematics_score, English_score, "
                       "Physics_score, Chemistry_score, Biology_score, "
                       "Geography_score, History_score, Politics_score "
                       "FROM students WHERE id = ?;";
-    sqlite3_stmt* stmt;
-    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK){
-        std::cerr << "Error preparing statement: " << sqlite3_errmsg(db) << std::endl;
-        return false;
-    }
+    Statement stmt(db, sql);
+    
 
-    sqlite3_bind_text(stmt, 1, id.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt.get(), 1, id.c_str(), -1, SQLITE_TRANSIENT);
 
-    if (sqlite3_step(stmt) == SQLITE_ROW){
-        outStudent.grade = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
-        outStudent.class_value = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
-        outStudent.id = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
-        outStudent.name = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3));
-        outStudent.age = sqlite3_column_int(stmt, 4);
-        outStudent.Chinese_score = sqlite3_column_double(stmt, 5);
-        outStudent.Mathematics_score = sqlite3_column_double(stmt, 6);
-        outStudent.English_score = sqlite3_column_double(stmt, 7);
-        outStudent.Physics_score = sqlite3_column_double(stmt, 8);
-        outStudent.Chemistry_score = sqlite3_column_double(stmt, 9);
-        outStudent.Biology_score = sqlite3_column_double(stmt, 10);
-        outStudent.Geography_score = sqlite3_column_double(stmt, 11);
-        outStudent.History_score = sqlite3_column_double(stmt, 12);
-        outStudent.Politics_score = sqlite3_column_double(stmt, 13);
+    if (sqlite3_step(stmt.get()) == SQLITE_ROW) {
+        outStudent.grade       = reinterpret_cast<const char*>(sqlite3_column_text(stmt.get(), 0));
+        outStudent.class_value = reinterpret_cast<const char*>(sqlite3_column_text(stmt.get(), 1));
+        outStudent.id          = reinterpret_cast<const char*>(sqlite3_column_text(stmt.get(), 2));
+        outStudent.name        = reinterpret_cast<const char*>(sqlite3_column_text(stmt.get(), 3));
+        outStudent.age                = sqlite3_column_int(stmt.get(), 4);
+        outStudent.Chinese_score      = sqlite3_column_double(stmt.get(), 5);
+        outStudent.Mathematics_score  = sqlite3_column_double(stmt.get(), 6);
+        outStudent.English_score      = sqlite3_column_double(stmt.get(), 7);
+        outStudent.Physics_score      = sqlite3_column_double(stmt.get(), 8);
+        outStudent.Chemistry_score    = sqlite3_column_double(stmt.get(), 9);
+        outStudent.Biology_score      = sqlite3_column_double(stmt.get(), 10);
+        outStudent.Geography_score    = sqlite3_column_double(stmt.get(), 11);
+        outStudent.History_score      = sqlite3_column_double(stmt.get(), 12);
+        outStudent.Politics_score     = sqlite3_column_double(stmt.get(), 13);
 
-        sqlite3_finalize(stmt);
+        
         return true;
     } else {
-        sqlite3_finalize(stmt);
         return false;
     }
 }
 
-void StuInfo3::printStudent(const StuInfo& s){
-    std::cout << "===========================================================" << std::endl;
-    std::cout << std::format("ID: {}\nName: {}\nGrade: {}\nAge: {}\n\nChinese score: {}\nMathematics score: {}\nEnglish: {}\nPhysics score: {}\nChemistry score: {}\nBiology score: {}\nGeography score: {}\nHistory score: {}\nPolitics: {}\n"
-                                , s.id, s.name, s.grade, s.age, s.Chinese_score, s.Mathematics_score, s.English_score, s.Physics_score, s.Chemistry_score, s.Biology_score, s.Geography_score, s.History_score, s.Politics_score) 
-    << std::endl;
-}
-
-std::vector<StuInfo3::StuInfo> StuInfo3::getAllStudent(sqlite3* db){
-    std::vector<StuInfo> students;
+std::vector<StuInfo3::Student> StuInfo3::getAllStudent() {
+    std::vector<Student> students;
     const char* sql = "SELECT grade, class_value, id, name, age, "
                       "Chinese_score, Mathematics_score, English_score, "
                       "Physics_score, Chemistry_score, Biology_score, "
                       "Geography_score, History_score, Politics_score "
                       "FROM students;";
-    sqlite3_stmt* stmt;
-    if(sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK){
-        std::cerr << "Error preparing statement: " << std::endl;
-        return students;
-    }
+    Statement stmt(db, sql);
 
-    while (sqlite3_step(stmt) == SQLITE_ROW){
-        StuInfo s;
-        s.grade = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
-        s.class_value = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
-        s.id = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
-        s.name = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3));
-        s.age = sqlite3_column_int(stmt, 4);
-        s.Chinese_score = sqlite3_column_double(stmt, 5);
-        s.Mathematics_score = sqlite3_column_double(stmt, 6);
-        s.English_score = sqlite3_column_double(stmt, 7);
-        s.Physics_score = sqlite3_column_double(stmt, 8);
-        s.Chemistry_score = sqlite3_column_double(stmt, 9);
-        s.Biology_score = sqlite3_column_double(stmt, 10);
-        s.Geography_score = sqlite3_column_double(stmt, 11);
-        s.History_score = sqlite3_column_double(stmt, 12);
-        s.Politics_score = sqlite3_column_double(stmt, 13);
+    while (sqlite3_step(stmt.get()) == SQLITE_ROW) {
+        Student s;
+        s.grade       = reinterpret_cast<const char*>(sqlite3_column_text(stmt.get(), 0));
+        s.class_value = reinterpret_cast<const char*>(sqlite3_column_text(stmt.get(), 1));
+        s.id          = reinterpret_cast<const char*>(sqlite3_column_text(stmt.get(), 2));
+        s.name        = reinterpret_cast<const char*>(sqlite3_column_text(stmt.get(), 3));
+        s.age                = sqlite3_column_int(stmt.get(), 4);
+        s.Chinese_score      = sqlite3_column_double(stmt.get(), 5);
+        s.Mathematics_score  = sqlite3_column_double(stmt.get(), 6);
+        s.English_score      = sqlite3_column_double(stmt.get(), 7);
+        s.Physics_score      = sqlite3_column_double(stmt.get(), 8);
+        s.Chemistry_score    = sqlite3_column_double(stmt.get(), 9);
+        s.Biology_score      = sqlite3_column_double(stmt.get(), 10);
+        s.Geography_score    = sqlite3_column_double(stmt.get(), 11);
+        s.History_score      = sqlite3_column_double(stmt.get(), 12);
+        s.Politics_score     = sqlite3_column_double(stmt.get(), 13);
         students.push_back(s);
     }
-    sqlite3_finalize(stmt);
+   
 
-    std::stable_sort(students.begin(), students.end(), 
-    [](const StuInfo& a, const StuInfo& b) {
-        return a.id < b.id;  
-    });
+    std::stable_sort(students.begin(), students.end(),
+        [](const Student& a, const Student& b) {
+            return a.id < b.id;
+        });
     return students;
 }
 
-bool StuInfo3::deleteStudentByID(sqlite3* db, const std::string& id){
+bool StuInfo3::deleteStudentByID(const std::string& id) {
     const char* sql = "DELETE FROM students WHERE id = ?;";
-    sqlite3_stmt* stmt;
+    Statement stmt(db, sql);
 
-    if(sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK){
-        std::cerr << "Error preparing statement: " << sqlite3_errmsg(db) << std::endl;
-        return false;
-    }
+    sqlite3_bind_text(stmt.get(), 1, id.c_str(), -1, SQLITE_TRANSIENT);
 
-    sqlite3_bind_text(stmt, 1, id.c_str(), -1, SQLITE_TRANSIENT);
-
-    if (sqlite3_step(stmt) != SQLITE_DONE){
+    if (sqlite3_step(stmt.get()) != SQLITE_DONE) {
         std::cerr << "Failed to delete: " << id << std::endl;
         return false;
     }
-
-    sqlite3_finalize(stmt);
+    
     std::cout << "Deleted student successfully: " << id << std::endl;
-    return true; 
+    return true;
 }
 
-bool StuInfo3::editStudentByID(sqlite3* db, const std::string& id){
-    StuInfo s;
-    if (!SelectStudentByID(db, id, s)) {
+bool StuInfo3::editStudentByID(const std::string& id) {
+    Student s;
+
+    if (!selectStudentByID(id, s)) {
         std::cout << "Student with ID " << id << " not found.\n";
         return false;
     }
 
-    while(true){
+    while (true) {
         std::cout << "Edit (grade/class/id/name/age/scores): ";
         std::string choice;
         std::getline(std::cin, choice);
@@ -257,7 +239,7 @@ bool StuInfo3::editStudentByID(sqlite3* db, const std::string& id){
             std::getline(std::cin, input);
             if (!input.empty()) {
                 // Delete old record, update ID, re-insert
-                deleteStudentByID(db, s.id);
+                deleteStudentByID(s.id);
                 s.id = input;
             }
         }
@@ -286,23 +268,22 @@ bool StuInfo3::editStudentByID(sqlite3* db, const std::string& id){
             std::transform(choosesss.begin(), choosesss.end(), choosesss.begin(), ::tolower);
             if (!choosesss.empty() && choosesss.back() == ';') choosesss.pop_back();
 
-            if      (choosesss == "chinese")     editScore("Chinese",     s.Chinese_score, 1);
-            else if (choosesss == "mathematics" || choosesss == "math")
-                                                editScore("Mathematics", s.Mathematics_score, 1);
-            else if (choosesss == "english")     editScore("English",     s.English_score, 1);
-            else if (choosesss == "physics")     editScore("Physics",     s.Physics_score, 0);
-            else if (choosesss == "chemistry")   editScore("Chemistry",   s.Chemistry_score, 0);
-            else if (choosesss == "biology")     editScore("Biology",     s.Biology_score, 0);
-            else if (choosesss == "geography")   editScore("Geography",   s.Geography_score, 0);
-            else if (choosesss == "history")     editScore("History",     s.History_score, 0);
-            else if (choosesss == "politics")    editScore("Politics",    s.Politics_score, 0);
+            if      (choosesss == "chinese")                          editScore("Chinese",     s.Chinese_score, 1);
+            else if (choosesss == "mathematics" || choosesss == "math") editScore("Mathematics", s.Mathematics_score, 1);
+            else if (choosesss == "english")                          editScore("English",     s.English_score, 1);
+            else if (choosesss == "physics")                          editScore("Physics",     s.Physics_score, 0);
+            else if (choosesss == "chemistry")                        editScore("Chemistry",   s.Chemistry_score, 0);
+            else if (choosesss == "biology")                          editScore("Biology",     s.Biology_score, 0);
+            else if (choosesss == "geography")                        editScore("Geography",   s.Geography_score, 0);
+            else if (choosesss == "history")                          editScore("History",     s.History_score, 0);
+            else if (choosesss == "politics")                         editScore("Politics",    s.Politics_score, 0);
             else    std::cout << "Invalid subject.\n";
         }
         else {
             std::cout << "Invalid choice\n";
             continue;
         }
-        if (insertStudent(db, s)) {
+        if (insertStudent(s)) {
             std::cout << "Update success!\n";
             return true;
         } else {
@@ -310,102 +291,276 @@ bool StuInfo3::editStudentByID(sqlite3* db, const std::string& id){
             return false;
         }
     }
-
+    
     
 }
 
-int StuInfo3::run(){
-    sqlite3* db = nullptr;
-    std::filesystem::path exe_path = std::filesystem::current_path();
-    std::filesystem::path student_dir = exe_path / "Student";
-    if (!std::filesystem::exists(student_dir)) {
-        std::filesystem::create_directory(student_dir);
+// ── Display operations ────────────────────────────────────────────────────────
+
+void StuInfo3::printStudent(const Student& s) const {
+    std::cout << "===========================================================" << std::endl;
+    std::cout << std::format("ID: {}\nName: {}\nGrade: {}\nAge: {}\n\n"
+                             "Chinese score: {}\nMathematics score: {}\n"
+                             "English: {}\nPhysics score: {}\nChemistry score: {}\n"
+                             "Biology score: {}\nGeography score: {}\nHistory score: {}\nPolitics: {}\n",
+                             s.id, s.name, s.grade, s.age,
+                             s.Chinese_score, s.Mathematics_score, s.English_score,
+                             s.Physics_score, s.Chemistry_score, s.Biology_score,
+                             s.Geography_score, s.History_score, s.Politics_score)
+         << std::endl;
+}
+
+void StuInfo3::scoreRangeShow() {
+    std::vector<Student> sse = getAllStudent();
+    std::cout << "Chinese; Mathematics; English; Physics; Chemistry;"
+                        "\nBiology; Geography; History; Politics."
+            << std::endl;
+    std::cout << "Choose a subject: ";
+    std::string choo{};
+    int mode = 0;
+    std::getline(std::cin, choo);
+    std::transform(choo.begin(), choo.end(), choo.begin(), ::tolower);
+    if (!choo.empty() && choo.back() == ';') {
+        choo.pop_back();
     }
-    std::filesystem::path data_file = student_dir / "students.db";
-    if (sqlite3_open(data_file.string().c_str(), &db) != SQLITE_OK){
-        std::cerr << "Failed to open database file" << sqlite3_errmsg(db) << std::endl;
+    if (choo == "chinese") mode = 0;
+    else if (choo == "mathematics") mode = 1;
+    else if (choo == "english") mode = 2;
+    else if (choo == "physics") mode = 3;
+    else if (choo == "chemistry") mode = 4;
+    else if (choo == "biology") mode = 5;
+    else if (choo == "geography") mode = 6;
+    else if (choo == "history") mode = 7;
+    else if (choo == "politics") mode = 8;
+    else std::cout << "Invalid subject" << std::endl;;
+    if (SRFM::SRF_M(sse, mode)) {
+        std::cout << "Displayed successfully" << std::endl;
+    } else {
+        std::cout << "Failed to displayed" << std::endl;
+    }
+}
+
+// ── Input operations ──────────────────────────────────────────────────────────
+
+void StuInfo3::enterStudent(Student& newStu) {
+    std::cout << "ID: ";
+    std::getline(std::cin, newStu.id);
+    std::cout << "Grade: ";
+    std::getline(std::cin, newStu.grade);
+    std::cout << "Class: ";
+    std::getline(std::cin, newStu.class_value);
+    std::cout << "Name: ";
+    std::getline(std::cin, newStu.name);
+    enterNum("Age: ", newStu.age, 0, 0);
+    enterNum("Chinese score: ", newStu.Chinese_score, 1, 1);
+    enterNum("Mathematics score: ", newStu.Mathematics_score, 1, 1);
+    enterNum("English score: ", newStu.English_score, 1, 1);
+    enterNum("Physics score: ", newStu.Physics_score, 1, 0);
+    enterNum("Chemistry: ", newStu.Chemistry_score, 1, 0);
+    enterNum("Biology score: ", newStu.Biology_score, 1, 0);
+    enterNum("Geography score: ", newStu.Geography_score, 1, 0);
+    enterNum("History: ", newStu.History_score, 1, 0);
+    enterNum("Politics: ", newStu.Politics_score, 1, 0);
+}
+
+// ── Insert Students from vector ────────────────────────────────────────────────────────
+bool StuInfo3::insertStudents(const std::vector<Student>& students) {
+    Transaction tn(db); // RAII transaction management
+    
+    for (const auto& student : students) {
+        if (!insertStudent(student)) {
+            try {
+                throw std::runtime_error("Failed to insert student with ID: " + student.id);
+            }  catch (const std::exception& e) {
+                std::cerr << e.what() << std::endl;
+                return false;
+            }
+        }
+    }
+
+    tn.commit();
+    return true;
+}
+
+// ── Import / Export ─────────────────────────────────────────────────────────
+bool impOrExp::importFromDB(
+    const std::filesystem::path& fmPath,
+    const std::filesystem::path& toPath)
+{
+    if (!from.openDatabase(fmPath)) {
+        std::cerr << "Failed to open source database: "
+                  << fmPath.string() << std::endl;
+
+        return false;
+    }
+
+    std::vector<StuInfo3::Student> students = from.getAllStudent();
+
+    if (!to.openDatabase(toPath)) {
+        std::cerr << "Failed to open target database: "
+                  << toPath.string() << std::endl;
+
+        return false;
+    }
+
+    if (!to.insertStudents(students)) {
+        std::cerr << "Failed to insert students into target database: "
+                  << toPath.string() << std::endl;
+
+        return false;
+    }
+
+    std::cout << "Import successful from "
+              << fmPath.string()
+              << " to "
+              << toPath.string()
+              << std::endl;
+
+    return true;
+}
+bool impOrExp::exportToDB(
+    const std::filesystem::path& fmPath,
+    const std::filesystem::path& toPath)
+{
+    return importFromDB(fmPath, toPath);
+}
+
+// ── Import export edit ───────────────────────────────────────────────────────────
+
+bool impOrExp::runapp() {
+    std::cout << "Import or Export? (i/e): ";
+    std::string choice;
+    std::string input;
+    std::getline(std::cin, choice);
+    if (choice == "i") {
+        std::filesystem::path fromPath, toPath;
+        std::cout << "From: ";
+        std::getline(std::cin, input);
+        fromPath = input;
+        std::cout << "To: ";
+        std::getline(std::cin, input);
+        toPath = input;
+        return importFromDB(fromPath, toPath);
+    } else if (choice == "e") {
+        std::filesystem::path fromPath, toPath;
+        std::cout << "From: ";
+        std::getline(std::cin, input);
+        fromPath = input;
+        std::cout << "To: ";
+        std::getline(std::cin, input);
+        toPath = input;
+        return exportToDB(fromPath, toPath);
+    } else {
+        std::cout << "Invalid choice." << std::endl;
+        return false;
+    }
+}
+
+
+
+// ── Standalone function ───────────────────────────────────────────────────────
+
+
+int stu::runStuInfo3(logger& log) {
+    StuInfo3 manager;
+    std::filesystem::path exe_path   = get_executable_path();
+    
+  
+    std::filesystem::path studir = exe_path / "Student";
+    if (!std::filesystem::exists(studir)) {
+        if (!std::filesystem::create_directory(studir)){
+
+        }
+    }
+
+    std::filesystem::path data_file  = exe_path / studir / "students.db";
+
+    
+
+    std::cout << "\033[33m";
+    std::cout << R"(
+
+_____  _             _            _   __  __                                   
+/ ____| |           | |          | | |  \/  |                                  
+| (___| |_ _   _  __| | ___ _ __ | |_| \  / | __ _ _ __   __ _  __ _  ___ _ __ 
+\___ \| __| | | |/ _` |/ _ \ '_ \| __| |\/| |/ _` | '_ \ / _` |/ _` |/ _ \ '__|
+____) | |_| |_| | (_| |  __/ | | | |_| |  | | (_| | | | | (_| | (_| |  __/ |   
+|_____/\__|\__,_|\__,_|\___|_| |_|\__|_|  |_|\__,_|_| |_|\__,_|\__, |\___|_|   
+                                                                __/ |           
+                                                                |___/  
+- Alpha Version -
+
+    )" << std::endl;
+    std::cout << "\033[0m";
+    std::cout << "\033[34m";
+    std::cout << "Version: " << StuInfo3::getVersion() << std::endl;
+    std::cout << std::endl;
+    std::cout << "\033[0m";
+
+    if (!manager.openDatabase(data_file)) {
+        std::cerr << "Failed to open database" << std::endl;
+        log.log("Failed to open database: " + data_file.string(), 0);
+        log.log(StuInfo3::getVersion() + " Program exited.", 2);
         return 1;
     }
     std::cout << "Successfully connected to the database." << std::endl;
-
-    if(!createTable(db)){
-        sqlite3_close(db);
+    log.log("Successfully connected to the database: " + data_file.string(), 2);
+    if (!manager.createTable()) {
         return 10;
     }
 
-    std::cout << "\033[33m";
-
-    std::cout << R"(
-
-  _____ _             _            _   __  __                                   
- / ____| |           | |          | | |  \/  |                                  
-| (___ | |_ _   _  __| | ___ _ __ | |_| \  / | __ _ _ __   __ _  __ _  ___ _ __ 
- \___ \| __| | | |/ _` |/ _ \ '_ \| __| |\/| |/ _` | '_ \ / _` |/ _` |/ _ \ '__|
- ____) | |_| |_| | (_| |  __/ | | | |_| |  | | (_| | | | | (_| | (_| |  __/ |   
-|_____/ \__|\__,_|\__,_|\___|_| |_|\__|_|  |_|\__,_|_| |_|\__,_|\__, |\___|_|   
-                                                                 __/ |           
-                                                                |___/  
-   - Alpha Version -
-
-    )" << std::endl;
-
+    std::cout << "\nWorkplace: " << get_executable_path() << std::endl;
+    log.log("Workplace: " + get_executable_path().string(), 2);
     
-    std::cout << "\033[0m";
-    std::cout << "\033[34m";
-    std::cout << "Version: " << STUINFO_VERSION << std::endl;
-    std::cout << std::endl;
-    std::cout << "\033[0m";
-    std::cout << "\nWorkplace: " << std::filesystem::current_path() << std::endl;
-    std::cout << "\nWelcome to the Student Information Management System!\n" << std::endl;
-    std::cout << "Please select an option:" << std::endl;
-    std::cout << "1. Add Student" << std::endl;
-    std::cout << "2. Delete Student" << std::endl;
-    std::cout << "3. Edit Student" << std::endl;
-    std::cout << "4. View Student" << std::endl;
-    std::cout << "5. View All Students" << std::endl;
-    std::cout << "6. View all students score range" << std::endl;
-    std::cout << "0. Exit" << std::endl;
     std::string choice;
-    while(true){
+    while (true) {
         std::cout << ">>># ";
         std::getline(std::cin, choice);
-        if (choice == "1"){
-            StuInfo newStu;
-            enterStudent(newStu);
-
-            insertStudent(db, newStu);
+        if (choice == "add") {
+            StuInfo3::Student newStu;
+            manager.enterStudent(newStu);
+            log.log("Student added: " + newStu.name + " (ID: " + newStu.id + ")", 2);
+            manager.insertStudent(newStu);
         }
-        else if (choice == "2"){
-            //std::cout << "Delete student functionality is not implemented yet." << std::endl;
+        else if (choice == "delete") {
             std::string id;
-            StuInfo out;
             std::cout << "ID: ";
             std::getline(std::cin, id);
-            if (!deleteStudentByID(db, id)){
+            if (!manager.deleteStudentByID(id)) {
                 std::cerr << "Not found" << std::endl;
             }
+            log.log("Student deleted: ID " + id, 2);
         }
-        else if (choice == "3"){
-            //std::cout << "Edit student functionality is not implemented yet." << std::endl;
+        else if (choice == "edit") {
             std::string id;
-            StuInfo out;
             std::cout << "ID: ";
             std::getline(std::cin, id);
-            if (!editStudentByID(db, id)){
+            if (!manager.editStudentByID(id)) {
                 std::cerr << "Failed" << std::endl;
             }
+            log.log("Student edited: ID " + id, 2);
         }
-        else if (choice == "5"){
-            //std::cout << "View all student functionality is not implemented yet." << std::endl;
-            std::vector<StuInfo> s = getAllStudent(db);
+        else if (choice == "view") {
+            std::string id;
+            StuInfo3::Student out;
+            std::cout << "ID: ";
+            std::getline(std::cin, id);
+            if (manager.selectStudentByID(id, out)) {
+                manager.printStudent(out);
+            } else {
+                std::cout << "Student not found" << std::endl;
+            }
+            log.log("Student viewed: ID " + id, 2);
+        }
+        else if (choice == "view-all") {
+            std::vector<StuInfo3::Student> s = manager.getAllStudent();
+            log.log("Viewed all students. Total count: " + std::to_string(s.size()), 2);
             int count = s.size();
             if (count == 0) {
                 std::cout << "No more students to display." << std::endl;
             }
-
-            for (const auto& student : s){
-                printStudent(student);
-
+            for (const auto& student : s) {
+                manager.printStudent(student);
                 if (count == 1) {
                     std::cout << "All students displayed." << std::endl;
                     break;
@@ -416,37 +571,48 @@ int StuInfo3::run(){
             }
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
         }
-        else if (choice == "4"){
-            std::string id;
-            StuInfo out;
-            std::cout << "ID: ";
-            std::getline(std::cin, id);
-            if (SelectStudentByID(db, id, out)){
-                printStudent(out);
-            }
-            else {
-                std::cout << "Student not found" << std::endl;
-            }
+        else if (choice == "score-range") {
+            log.log("Viewing score range for a subject.", 2);
+            manager.scoreRangeShow();
         }
-        else if (choice == "6"){
-            scoreRangeShow(db);
-        }
-        else if (choice == "0"){
+        else if (choice == "quit" || choice == "exit" || choice == "q") {
+            log.log("Exiting the program.", 2);
             break;
+        }
+
+        else if (choice == "help" || choice == "h") {
+            std::cout << StuInfo3::getVersion() <<"\n"
+                      << "Available commands:\n"
+                      << "  add         - Add a new student\n"
+                      << "  delete      - Delete a student by ID\n"
+                      << "  edit        - Edit a student's information by ID\n"
+                      << "  view        - View a student's information by ID\n"
+                      << "  view-all    - View all students' information\n"
+                      << "  score-range  - View score range for a subject\n"
+                      << "  help         - Show this help message\n"
+                      << "  quit/exit/q  - Exit the program\n";
+            log.log("Help information displayed.", 2);
+        }
+        else if (choice == "import" || choice == "export") {
+            log.log("Running import/export operation.", 2);
+            impOrExp io;
+            if (!io.runapp()) {
+                std::cerr << "Import/Export operation failed." << std::endl;
+                log.log("Import/Export operation failed.", 1);
+            }
+        }
+        else if (choice == "minecraft" || choice == "MINECRAFT" || choice == "Minecraft") {
+            std::cout << manager.easter_egg << std::endl;
+            log.log("Easter egg revealed.", 2);
         }
         else {
             std::cout << "Invalid choice. Please try again." << std::endl;
+            log.log("Invalid command entered: " + choice, 1);
         }
 
-        std::cout << "1. Add Student" << std::endl;
-        std::cout << "2. Delete Student" << std::endl;
-        std::cout << "3. Edit Student" << std::endl;
-        std::cout << "4. View Student" << std::endl;
-        std::cout << "5. View All Students" << std::endl;
-        std::cout << "0. Exit" << std::endl;
+        
     }
-
-    sqlite3_close(db);
-    
-    return 0;  
+    log.log(StuInfo3::getVersion() + " Program exited.", 2);
+    return 0;
 }
+

@@ -82,7 +82,7 @@ int StudentInfo::run(){
     std::cout << "Version: " << VERSION << std::endl;
     std::cout << std::endl;
     std::cout << "\033[0m";
-    std::cout << "\nWorkplace: " << std::filesystem::current_path() << std::endl;
+    std::cout << "\nWorkplace: " << get_executable_path() << std::endl;
     std::cout << "\nWelcome to the Student Information Management System!\n" << std::endl;
     std::cout << "Please select an option:" << std::endl;
     std::cout << "1. Add Student" << std::endl;
@@ -153,7 +153,7 @@ void StudentInfo::add_student(){
     nlohmann::json j;
     to_json(j, new_student);
 
-    std::filesystem::path exe_path = std::filesystem::current_path();
+    std::filesystem::path exe_path = get_executable_path();
     std::filesystem::path student_dir = exe_path / "Student";
     if (!std::filesystem::exists(student_dir)) {
         std::filesystem::create_directory(student_dir);
@@ -184,7 +184,7 @@ void StudentInfo::view_student(){
     std::getline(std::cin, class_value);
     std::cout << "Enter the student ID to view: ";
     std::getline(std::cin, student_id);
-    std::filesystem::path exe_path = std::filesystem::current_path();
+    std::filesystem::path exe_path = get_executable_path();
     std::filesystem::path student_dir = exe_path / "Student";
 
     
@@ -224,7 +224,7 @@ void StudentInfo::view_student(){
     std::cout << "\nStudent information displayed successfully!" << std::endl;
 }
 void StudentInfo::view_all_students(){
-    std::filesystem::path exe_path = std::filesystem::current_path();
+    std::filesystem::path exe_path = get_executable_path();
     std::filesystem::path student_dir = exe_path / "Student";
     if (!std::filesystem::exists(student_dir)) {
         std::cout << "No students found." << std::endl;
@@ -294,7 +294,7 @@ void StudentInfo::delete_student(){
     std::cout << "ID of the student to delete: ";
     std::string student_id;
     std::getline(std::cin, student_id);
-    std::filesystem::path exe_path = std::filesystem::current_path();
+    std::filesystem::path exe_path = get_executable_path();
     std::filesystem::path student_dir = exe_path / "Student";
     std::filesystem::path file_path = student_dir / (student_id + ".json");
     if (!std::filesystem::exists(file_path)) {
@@ -308,7 +308,7 @@ void StudentInfo::edit_student(){
     std::cout << "ID of the student to edit: ";
     std::string student_id;
     std::getline(std::cin, student_id);
-    std::filesystem::path exe_path = std::filesystem::current_path();
+    std::filesystem::path exe_path = get_executable_path();
     std::filesystem::path student_dir = exe_path / "Student";
     std::filesystem::path file_path = student_dir / (student_id + ".json");
     if (!std::filesystem::exists(file_path)) {

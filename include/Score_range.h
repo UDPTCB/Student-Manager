@@ -5,7 +5,34 @@
 #include <string>
 
 namespace SRFM {
+/*
+    REQUIREMENTS FOR Container::value_type
 
+    Must contain the following members:
+
+        std::string grade;
+        std::string class_value;
+        std::string id;
+        std::string name;
+
+        int age;
+
+        double Chinese_score;
+        double Mathematics_score;
+        double English_score;
+        double Physics_score;
+        double Chemistry_score;
+        double Biology_score;
+        double Geography_score;
+        double History_score;
+        double Politics_score;
+
+    Example:
+
+        struct Student {
+            ...
+        };
+*/
 template<typename Container, typename Func>
 void print_score_range(const Container& se, Func get_score) {
     std::vector<int> SR(16, 0);
@@ -28,9 +55,9 @@ void print_score_range(const Container& se, Func get_score) {
     }
 }
 
-template<typename Container, typename T>
-bool SRF_M(Container& s, const int m, T& temp){
-    
+template<typename Container>
+bool SRF_M(Container& s, const int m){
+    using T = typename Container::value_type;
     if (m == 0){
         print_score_range(s, [](const T& see) -> double {
             return see.Chinese_score;
