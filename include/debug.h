@@ -1,4 +1,5 @@
 /*
+ * SPDX-License-Identifier: GPL-3.0-or-later
  * Copyright (C) 2026 Yvhang Cai(Jeffrey Miller) jeffrey_miller_GD@outlook.com
  * 
  * This file is part of Student Manager.
@@ -15,8 +16,6 @@
  * 
  * You should have received a copy of the GNU General Public License
  * along with Student Manager.  If not, see <https://www.gnu.org/licenses/>.
- * 
- * SPDX-License-Identifier: GPL-3.0-or-later
  */
 #ifndef DEBUG_H
 #define DEBUG_H
