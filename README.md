@@ -2,7 +2,7 @@
 
 A command-line student information management system written in C++.
 
-> **Latest Version:** 0.1.2-ALPHA
+> **Latest Version:** 0.1.3-ALPHA
 
 ---
 
@@ -11,7 +11,7 @@ A command-line student information management system written in C++.
 | Version | Status | Backend |
 |---|---|---|
 | 0.0.1-ALPHA | Available | JSON files (nlohmann/json) |
-| 0.1.2-ALPHA | Available | SQLite3 |
+| 0.1.3-ALPHA | Latest | SQLite3 |
 
 At startup, you will be prompted to choose which version to run. Enter nothing to quit.
 
@@ -21,19 +21,12 @@ At startup, you will be prompted to choose which version to run. Enter nothing t
 
 - Add, view, edit, and delete student records
 - Tracks 9 subjects per student: Chinese, Mathematics, English, Physics, Chemistry, Biology, Geography, History, and Politics
-- Input validation for all numeric fields (age, scores)
+- Input validation for all numeric fields (age, scores), with per-subject score limits (0–100, 0–120, or 0–150)
 - Records sorted by student ID when viewing all
-
-### Version 0.0.1-ALPHA
-- Each student record stored as an individual JSON file (powered by [nlohmann/json](https://github.com/nlohmann/json))
-
-### Version 0.1.1-ALPHA
-- All student records stored in a SQLite3 database
-
-### Version 0.1.2-ALPHA
-- All student records stored in a SQLite3 database
-- **Score range statistics** — distribution analysis across score bands (0–9, 10–19, … up to 150) for all 9 subjects, powered by the `SRFM` template functions in `Score_range.h`
-- Enhanced input validation with per-subject score limits (0–100, 0–120, or 0–150)
+- Score distribution statistics across score bands for all 9 subjects
+- Import and export records between two databases
+- Structured session logging with log rotation
+- Command-based CLI with a `help` command
 
 ---
 
@@ -41,10 +34,9 @@ At startup, you will be prompted to choose which version to run. Enter nothing t
 
 | Dependency | Purpose |
 |---|---|
-| [nlohmann/json](https://github.com/nlohmann/json) (`json.hpp`) | JSON serialization/deserialization (v0.0.1-ALPHA) |
-| [SQLite3](https://www.sqlite.org/) (`sqlite3.h` / `sqlite3.c`) | Database backend (v0.1.1-ALPHA) |
-
-| C++17 standard library (`std::filesystem`, `std::format`) | File, directory management, and string formatting |
+| [nlohmann/json](https://github.com/nlohmann/json) (`json.hpp`) | JSON serialization/deserialization (v0.0.1-ALPHA only) |
+| [SQLite3](https://www.sqlite.org/) (`sqlite3.h` / `sqlite3.c`) | Database backend (v0.1.3-ALPHA) |
+| C++23 standard library (`std::filesystem`, `std::format`, `std::chrono`) | File/directory management, string formatting, time |
 
 > `json.hpp`, `sqlite3.h`, and `sqlite3.c` are bundled directly in the project — no separate installation needed.
 
@@ -52,15 +44,15 @@ At startup, you will be prompted to choose which version to run. Enter nothing t
 
 ## Requirements
 
-- C++20 or later
-- CMake 3.15+
+- C++23 or later
+- CMake 4.3+
 - MinGW-w64 / MSYS2 (Windows) or GCC (Linux/macOS)
 
 ---
 
 ## Build
 
-```bash
+```sh
 # Configure
 cmake -S . -B out/build
 
@@ -70,7 +62,7 @@ cmake --build out/build
 
 Clean rebuild:
 
-```bash
+```sh
 cmake --build out/build --clean-first
 ```
 
@@ -78,7 +70,7 @@ cmake --build out/build --clean-first
 
 ## Usage
 
-```bash
+```sh
 ./manager        # Linux/macOS
 manager.exe      # Windows
 ```
@@ -86,72 +78,105 @@ manager.exe      # Windows
 Version selection menu:
 
 ```
-1- 0.0.1-ALPHA
-2- 0.1.2-ALPHA
+1- 0.0.1-Alpha
+2- 0.1.3-ALPHA
 Choose a version (Keep void to quit):
 ```
 
-Main menu (both versions):
+---
+
+## Commands (v0.1.3-ALPHA)
+
+After selecting version 2, you will be dropped into a command prompt:
 
 ```
-1. Add Student
-2. Delete Student
-3. Edit Student
-4. View Student
-5. View All Students
-0. Exit
+>>># 
 ```
 
-Main menu (0.1.2-alpha):
-
-```
-1. Add Student
-2. Delete Student
-3. Edit Student
-4. View Student
-5. View All Students
-6. View all students score range
-0. Exit
-```
-
-### Student Fields
-
-| Field | Type |
+| Command | Description |
 |---|---|
-| Grade | String |
-| Class | String |
-| ID | String |
-| Name | String |
-| Age | Integer |
-| Chinese Score | Double |
-| Mathematics Score | Double |
-| English Score | Double |
-| Physics Score | Double |
-| Chemistry Score | Double |
-| Biology Score | Double |
-| Geography Score | Double |
-| History Score | Double |
-| Politics Score | Double |
+| `add` | Add a new student |
+| `delete` | Delete a student by ID |
+| `edit` | Edit a student's information by ID |
+| `view` | View a student's information by ID |
+| `view-all` | View all students (paginated) |
+| `score-range` | View score distribution for a subject |
+| `import` | Import records from another database |
+| `export` | Export records to another database |
+| `help` / `h` | Show available commands and version |
+| `quit` / `exit` / `q` | Exit the program |
 
-### Editing a Student
+---
 
-Enter the field to update when prompted:
+## Student Fields
+
+| Field | Type | Score limit |
+|---|---|---|
+| Grade | String | — |
+| Class | String | — |
+| ID | String | — |
+| Name | String | — |
+| Age | Integer | — |
+| Chinese Score | Double | 0 – 120 |
+| Mathematics Score | Double | 0 – 120 |
+| English Score | Double | 0 – 120 |
+| Physics Score | Double | 0 – 100 |
+| Chemistry Score | Double | 0 – 100 |
+| Biology Score | Double | 0 – 100 |
+| Geography Score | Double | 0 – 100 |
+| History Score | Double | 0 – 100 |
+| Politics Score | Double | 0 – 100 |
+
+---
+
+## Editing a Student
+
+Run `edit`, enter the target student's ID, then enter the field to update:
 
 ```
-grade / class / id / name / age / scores
+Edit (grade/class/id/name/age/scores):
 ```
 
-Selecting `scores` walks through all 9 subjects, showing the current value before each prompt.
+Selecting `scores` prompts for a subject name (case-insensitive, e.g. `chinese`, `math`), shows the current value, then asks for a new one.
 
-> **Note (v0.0.1-ALPHA):** Changing a student's ID also renames their JSON file on disk.
+> **Note:** Changing a student's ID deletes the old record and re-inserts it under the new ID.
+
+---
+
+## Score Range
+
+Run `score-range` and enter a subject name. The output shows how many students fall into each 10-point band:
+
+```
+0-9: 0
+10-19: 2
+20-29: 1
+...
+110-119: 5
+120: 3
+```
+
+---
+
+## Import / Export
+
+Run `import` or `export` at the prompt. You will be asked for a direction and two file paths:
+
+```
+Import or Export? (i/e): i
+From: /path/to/source.db
+To: /path/to/target.db
+```
+
+All records from the source database are inserted into the target database in a single transaction. If any insert fails, the entire operation is rolled back.
 
 ---
 
 ## Data Storage
 
-### Version 0.0.1-ALPHA
+### v0.0.1-ALPHA
 
-Records are saved as JSON files under a `Student/` directory, created automatically in the working directory:
+Records are saved as individual JSON files under a `Student/` directory, created automatically next to the executable:
 
 ```
 Student/
@@ -180,9 +205,31 @@ Example record:
 }
 ```
 
-### Version 0.1.1-ALPHA / 0.1.2-ALPHA
+### v0.1.3-ALPHA
 
-Records are stored in a SQLite3 database (`students.db`) created automatically in a `Student/` directory in the working directory.
+Records are stored in a SQLite3 database (`students.db`) created automatically in a `Student/` directory next to the executable.
+
+```
+Student/
+  students.db
+```
+
+---
+
+## Logging
+
+Each session writes a log file under a `logs/` directory next to the executable. Log filenames use a full datetime timestamp (`YYYYMMDD_HHMMSS.log`) so no two sessions overwrite each other.
+
+Log levels:
+
+| Level | Meaning |
+|---|---|
+| ERROR | Operation or startup failure |
+| WARNING | Invalid input or failed action |
+| INFO | Normal operation events |
+| DEBUG | Developer-level detail |
+
+Logs are appended to the existing file for the day. Call `rotate()` programmatically to archive the current log to `.bak` and start fresh.
 
 ---
 
@@ -192,33 +239,30 @@ Records are stored in a SQLite3 database (`students.db`) created automatically i
 Manager/
 ├── include/
 │   ├── config.h
+│   ├── debug.h
+│   ├── exePath.h
 │   ├── json.hpp            # bundled nlohmann/json
-│   ├── Score_range.h       # score distribution (v0.1.2-ALPHA)
+│   ├── logger.hpp
+│   ├── Score_range.h
 │   ├── sqlite3.h           # bundled SQLite3
 │   ├── stu-info.h          # v0.0.1-ALPHA
-│   └── stu-info3.hpp       # v0.1.1-ALPHA / v0.1.2-ALPHA
-├── out/                    # build output directory
+│   └── stu-info3.hpp       # v0.1.3-ALPHA
 ├── src/
 │   ├── main.cpp
 │   ├── config.cpp
-│   ├── Score_range.cpp     # score distribution (v0.1.2-ALPHA)
+│   ├── debug.cpp
+│   ├── exePath.cpp
+│   ├── logger.cpp
+│   ├── Score_range.cpp
 │   ├── sqlite3.c           # bundled SQLite3
 │   ├── stu-info.cpp        # v0.0.1-ALPHA
-│   └── stu-info3.cpp       # v0.1.1-ALPHA / v0.1.2-ALPHA
+│   └── stu-info3.cpp       # v0.1.3-ALPHA
+├── out/                    # build output directory
 └── CMakeLists.txt
 ```
 
 ---
 
-## Release
+## License
 
-### [manager-windows-amd_x64-0.1.2-alpha.exe](https://github.com/)
-
-> **Platform:** Windows 10 / 11 (AMD x64 only)
-
-This is the second public alpha build of Student Manager for Windows. The binary bundles both versions of the application:
-
-- **0.0.1-ALPHA** — JSON-based student records
-- **0.1.2-ALPHA** — SQLite3-based student records with score range statistics
-
-No installation required — extract the ZIP and run the
+[GPL-2.0](LICENSE)
