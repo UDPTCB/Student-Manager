@@ -1,0 +1,26 @@
+# Build directories
+out/
+build/
+cmake-build-*/
+
+# Version/compilation directory
+version/
+
+# Compiled executables
+*.exe
+*.out
+manager
+manager.exe
+
+# Intermediate files
+*.o
+*.obj
+*.a
+
+# IDE configuration files
+.vscode/
+.idea/
+
+# Runtime data
+Student/
+logs/
