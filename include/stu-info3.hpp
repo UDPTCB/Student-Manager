@@ -19,7 +19,7 @@
  */
 #ifndef STUDENT3_HPP
 #define STUDENT3_HPP
-#define STUINFO_VERSION "0.1.4-ALPHA"
+#define STUINFO_VERSION "0.1.5-ALPHA"
 #include "./sqlite3.h"
 #include "./Score_range.h"
 #include "./logger.hpp"
@@ -98,6 +98,9 @@ public:
         double Geography_score{};
         double History_score{};
         double Politics_score{};
+        std::string created_at{};
+        std::string updated_at{};
+        double total_score{};
     };
     
     // Constructor / Destructor
@@ -118,10 +121,11 @@ public:
     std::vector<Student> getAllStudent();
     bool deleteStudentByID(const std::string& id);
     bool editStudentByID(const std::string& id);
-    
+    bool createTriggers();
+    bool migrateTable();
     // Display operations
     void printStudent(const Student& s) const;
-    void scoreRangeShow();
+    void scoreRangeShow(std::string subject = "");
 
     // Input operations
     void enterStudent(Student& newStu);

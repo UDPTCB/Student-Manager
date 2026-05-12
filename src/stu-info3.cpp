@@ -24,7 +24,7 @@
 std::string StuInfo3::getCurrentTime() {
     auto now = std::chrono::system_clock::now();
     auto local_time = std::chrono::zoned_time{std::chrono::current_zone(), now};
-    return std::format("{:%Y-%m-%d %H:%M:%S}", local_time);
+    return std::format("{:%Y-%m-%d--%H:%M:%S}", local_time);
 }
 
 std::string StuInfo3::getTimestampForFilename() {
@@ -101,7 +101,14 @@ bool StuInfo3::createTable() {
             Biology_score REAL,
             Geography_score REAL,
             History_score REAL,
-            Politics_score REAL
+            Politics_score REAL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            total_score REAL GENERATED ALWAYS AS (
+                COALESCE(Chinese_score, 0) + COALESCE(Mathematics_score, 0) + COALESCE(English_score, 0) +
+                COALESCE(Physics_score, 0) + COALESCE(Chemistry_score, 0) + COALESCE(Biology_score, 0) +
+                COALESCE(Geography_score, 0) + COALESCE(History_score, 0) + COALESCE(Politics_score, 0)
+            ) STORED
         );
     )";
     char* errMsg = nullptr;
@@ -112,39 +119,168 @@ bool StuInfo3::createTable() {
     }
     return true;
 }
+bool StuInfo3::migrateTable() {
+    // Step 1: Try adding plain columns (ignore if already exist)
+    const char* plainMigrations[] = {
+        "ALTER TABLE students ADD COLUMN created_at TEXT DEFAULT '';",
+        "ALTER TABLE students ADD COLUMN updated_at TEXT DEFAULT '';"
+    };
+    for (const char* sql : plainMigrations) {
+        char* errMsg = nullptr;
+        int rc = sqlite3_exec(db, sql, nullptr, nullptr, &errMsg);
+        if (rc != SQLITE_OK) {
+            std::string err = errMsg ? errMsg : "unknown error";
+            sqlite3_free(errMsg);
+            if (err.find("duplicate column name") != std::string::npos) continue;
+            std::cerr << "Migration error: " << err << std::endl;
+            return false;
+        }
+    }
 
+    // Step 2: Check if total_score exists
+    bool hasTotalScore = false;
+    sqlite3_stmt* checkStmt = nullptr;
+    if (sqlite3_prepare_v2(db, "SELECT total_score FROM students LIMIT 1;",
+                           -1, &checkStmt, nullptr) == SQLITE_OK) {
+        hasTotalScore = true;
+        sqlite3_finalize(checkStmt);
+    }
+
+    if (!hasTotalScore) {
+        // Step 3: total_score is missing — must recreate the table
+        std::cerr << "Migrating: rebuilding table to add total_score...\n";
+
+        const char* rebuildSql = R"(
+            BEGIN TRANSACTION;
+            CREATE TABLE students_new (
+                id TEXT PRIMARY KEY,
+                grade TEXT,
+                class_value TEXT,
+                name TEXT,
+                age INTEGER,
+                Chinese_score REAL,
+                Mathematics_score REAL,
+                English_score REAL,
+                Physics_score REAL,
+                Chemistry_score REAL,
+                Biology_score REAL,
+                Geography_score REAL,
+                History_score REAL,
+                Politics_score REAL,
+                created_at TEXT DEFAULT '',
+                updated_at TEXT DEFAULT '',
+                total_score REAL GENERATED ALWAYS AS (
+                    COALESCE(Chinese_score, 0) + COALESCE(Mathematics_score, 0) +
+                    COALESCE(English_score, 0) + COALESCE(Physics_score, 0) +
+                    COALESCE(Chemistry_score, 0) + COALESCE(Biology_score, 0) +
+                    COALESCE(Geography_score, 0) + COALESCE(History_score, 0) +
+                    COALESCE(Politics_score, 0)
+                ) STORED
+            );
+            INSERT INTO students_new (
+                id, grade, class_value, name, age,
+                Chinese_score, Mathematics_score, English_score,
+                Physics_score, Chemistry_score, Biology_score,
+                Geography_score, History_score, Politics_score,
+                created_at, updated_at
+            )
+            SELECT
+                id, grade, class_value, name, age,
+                Chinese_score, Mathematics_score, English_score,
+                Physics_score, Chemistry_score, Biology_score,
+                Geography_score, History_score, Politics_score,
+                created_at, updated_at
+            FROM students;
+            DROP TABLE students;
+            ALTER TABLE students_new RENAME TO students;
+            COMMIT;
+        )";
+
+        char* errMsg = nullptr;
+        if (sqlite3_exec(db, rebuildSql, nullptr, nullptr, &errMsg) != SQLITE_OK) {
+            std::string err = errMsg ? errMsg : "unknown error";
+            sqlite3_free(errMsg);
+            sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
+            std::cerr << "Failed to rebuild table: " << err << std::endl;
+            return false;
+        }
+        std::cerr << "Migration complete.\n";
+    }
+
+    // Always runs — backfills any rows with empty timestamps
+    // WHERE clause ensures rows that already have timestamps are untouched
+    sqlite3_exec(db,
+        "UPDATE students SET created_at = datetime('now','localtime') WHERE created_at = '' OR created_at IS NULL;",
+        nullptr, nullptr, nullptr);
+    sqlite3_exec(db,
+        "UPDATE students SET updated_at = datetime('now','localtime') WHERE updated_at = '' OR updated_at IS NULL;",
+        nullptr, nullptr, nullptr);
+
+    return true;
+}
+bool StuInfo3::createTriggers() {
+    sqlite3_exec(db, "DROP TRIGGER IF EXISTS update_students_timestamp;", nullptr, nullptr, nullptr);
+
+    const char* sql = R"(
+        CREATE TRIGGER IF NOT EXISTS update_students_timestamp 
+        AFTER UPDATE ON students
+        BEGIN
+            UPDATE students SET updated_at = datetime('now', 'localtime')
+            WHERE id = NEW.id;
+        END;
+    )";
+    char* errMsg = nullptr;
+    if (sqlite3_exec(db, sql, nullptr, nullptr, &errMsg) != SQLITE_OK) {
+        std::cerr << "Error creating trigger: " << errMsg << std::endl;
+        sqlite3_free(errMsg);
+        return false;
+    }
+    return true;
+}
 bool StuInfo3::insertStudent(const Student& student) {
     const char* sql = R"(
         INSERT OR REPLACE INTO students (
             id, grade, class_value, name, age,
             Chinese_score, Mathematics_score, English_score,
             Physics_score, Chemistry_score, Biology_score,
-            Geography_score, History_score, Politics_score
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+            Geography_score, History_score, Politics_score,
+            created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                  COALESCE(?, ?),
+                  ?);
     )";
     Statement stmt(db, sql);
-    
 
-    sqlite3_bind_text(stmt.get(), 1, student.id.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt.get(), 2, student.grade.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt.get(), 3, student.class_value.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt.get(), 4, student.name.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_int(stmt.get(), 5, student.age);
-    sqlite3_bind_double(stmt.get(), 6, student.Chinese_score);
-    sqlite3_bind_double(stmt.get(), 7, student.Mathematics_score);
-    sqlite3_bind_double(stmt.get(), 8, student.English_score);
-    sqlite3_bind_double(stmt.get(), 9, student.Physics_score);
+    std::string now = getCurrentTime(); // ← local time from C++
+
+    sqlite3_bind_text(stmt.get(), 1,  student.id.c_str(),          -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt.get(), 2,  student.grade.c_str(),        -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt.get(), 3,  student.class_value.c_str(),  -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt.get(), 4,  student.name.c_str(),         -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int (stmt.get(), 5,  student.age);
+    sqlite3_bind_double(stmt.get(), 6,  student.Chinese_score);
+    sqlite3_bind_double(stmt.get(), 7,  student.Mathematics_score);
+    sqlite3_bind_double(stmt.get(), 8,  student.English_score);
+    sqlite3_bind_double(stmt.get(), 9,  student.Physics_score);
     sqlite3_bind_double(stmt.get(), 10, student.Chemistry_score);
     sqlite3_bind_double(stmt.get(), 11, student.Biology_score);
     sqlite3_bind_double(stmt.get(), 12, student.Geography_score);
     sqlite3_bind_double(stmt.get(), 13, student.History_score);
     sqlite3_bind_double(stmt.get(), 14, student.Politics_score);
 
+    // created_at: keep existing if present, otherwise use local now
+    if (!student.created_at.empty()) {
+        sqlite3_bind_text(stmt.get(), 15, student.created_at.c_str(), -1, SQLITE_TRANSIENT);
+    } else {
+        sqlite3_bind_null(stmt.get(), 15);
+    }
+    sqlite3_bind_text(stmt.get(), 16, now.c_str(), -1, SQLITE_TRANSIENT); // fallback for COALESCE
+    sqlite3_bind_text(stmt.get(), 17, now.c_str(), -1, SQLITE_TRANSIENT); // updated_at
+
     if (sqlite3_step(stmt.get()) != SQLITE_DONE) {
         std::cerr << "Error inserting student: " << sqlite3_errmsg(db) << std::endl;
         return false;
     }
-
     std::cout << "Student inserted successfully!" << std::endl;
     return true;
 }
@@ -153,7 +289,8 @@ bool StuInfo3::selectStudentByID(const std::string& id, Student& outStudent) {
     const char* sql = "SELECT grade, class_value, id, name, age, "
                       "Chinese_score, Mathematics_score, English_score, "
                       "Physics_score, Chemistry_score, Biology_score, "
-                      "Geography_score, History_score, Politics_score "
+                      "Geography_score, History_score, Politics_score, "
+                      "created_at, updated_at, total_score "
                       "FROM students WHERE id = ?;";
     Statement stmt(db, sql);
     
@@ -175,7 +312,9 @@ bool StuInfo3::selectStudentByID(const std::string& id, Student& outStudent) {
         outStudent.Geography_score    = sqlite3_column_double(stmt.get(), 11);
         outStudent.History_score      = sqlite3_column_double(stmt.get(), 12);
         outStudent.Politics_score     = sqlite3_column_double(stmt.get(), 13);
-
+        outStudent.created_at = reinterpret_cast<const char*>(sqlite3_column_text(stmt.get(), 14));
+        outStudent.updated_at = reinterpret_cast<const char*>(sqlite3_column_text(stmt.get(), 15));
+        outStudent.total_score = sqlite3_column_double(stmt.get(), 16);
         
         return true;
     } else {
@@ -188,7 +327,8 @@ std::vector<StuInfo3::Student> StuInfo3::getAllStudent() {
     const char* sql = "SELECT grade, class_value, id, name, age, "
                       "Chinese_score, Mathematics_score, English_score, "
                       "Physics_score, Chemistry_score, Biology_score, "
-                      "Geography_score, History_score, Politics_score "
+                      "Geography_score, History_score, Politics_score, "
+                      "created_at, updated_at, total_score "
                       "FROM students;";
     Statement stmt(db, sql);
 
@@ -208,6 +348,9 @@ std::vector<StuInfo3::Student> StuInfo3::getAllStudent() {
         s.Geography_score    = sqlite3_column_double(stmt.get(), 11);
         s.History_score      = sqlite3_column_double(stmt.get(), 12);
         s.Politics_score     = sqlite3_column_double(stmt.get(), 13);
+        s.created_at         = reinterpret_cast<const char*>(sqlite3_column_text(stmt.get(), 14));
+        s.updated_at         = reinterpret_cast<const char*>(sqlite3_column_text(stmt.get(), 15));
+        s.total_score        = sqlite3_column_double(stmt.get(), 16);
         students.push_back(s);
     }
    
@@ -321,29 +464,39 @@ bool StuInfo3::editStudentByID(const std::string& id) {
 }
 
 // ── Display operations ────────────────────────────────────────────────────────
-
 void StuInfo3::printStudent(const Student& s) const {
     std::cout << "===========================================================" << std::endl;
-    std::cout << std::format("ID: {}\nName: {}\nGrade: {}\nAge: {}\n\n"
-                             "Chinese score: {}\nMathematics score: {}\n"
-                             "English: {}\nPhysics score: {}\nChemistry score: {}\n"
-                             "Biology score: {}\nGeography score: {}\nHistory score: {}\nPolitics: {}\n",
-                             s.id, s.name, s.grade, s.age,
-                             s.Chinese_score, s.Mathematics_score, s.English_score,
-                             s.Physics_score, s.Chemistry_score, s.Biology_score,
-                             s.Geography_score, s.History_score, s.Politics_score)
-         << std::endl;
+    std::cout << std::format(
+        "ID: {}\nName: {}\nGrade: {}\nAge: {}\n\n"
+        "Chinese score: {}\nMathematics score: {}\n"
+        "English: {}\nPhysics score: {}\nChemistry score: {}\n"
+        "Biology score: {}\nGeography score: {}\nHistory score: {}\nPolitics: {}\n\n"
+        "Total score: {}\nCreated at: {}\nUpdated at: {}\n",
+        s.id, s.name, s.grade, s.age,
+        s.Chinese_score, s.Mathematics_score, s.English_score,
+        s.Physics_score, s.Chemistry_score, s.Biology_score,
+        s.Geography_score, s.History_score, s.Politics_score,
+        s.total_score, s.created_at, s.updated_at)
+    << std::endl;
 }
-
-void StuInfo3::scoreRangeShow() {
+void StuInfo3::scoreRangeShow(std::string subject) {
     std::vector<Student> sse = getAllStudent();
-    std::cout << "Chinese; Mathematics; English; Physics; Chemistry;"
-                        "\nBiology; Geography; History; Politics."
-            << std::endl;
-    std::cout << "Choose a subject: ";
-    std::string choo{};
+    if (sse.empty()){
+        std::cout << "No students found." << std::endl;
+        return;
+    }
+    std::string choo = subject;
     int mode = 0;
-    std::getline(std::cin, choo);
+    if (subject.empty()) {
+        std::cout << "Chinese; Mathematics; English; Physics; Chemistry;"
+                            "\nBiology; Geography; History; Politics."
+                << std::endl;
+        std::cout << "Choose a subject: ";
+        std::string chooa{};
+        
+        std::getline(std::cin, chooa);
+        choo = chooa;
+    }
     std::transform(choo.begin(), choo.end(), choo.begin(), ::tolower);
     if (!choo.empty() && choo.back() == ';') {
         choo.pop_back();
@@ -363,6 +516,7 @@ void StuInfo3::scoreRangeShow() {
     } else {
         std::cout << "Failed to displayed" << std::endl;
     }
+    
 }
 
 // ── Input operations ──────────────────────────────────────────────────────────
@@ -435,6 +589,27 @@ bool impOrExp::importFromDB(
         return false;
     }
 
+    if (!from.createTable()) {
+        std::cerr << "Failed to create table in source database: "
+                  << fmPath.string() << std::endl;
+
+        return false;
+    }
+
+    if (!from.migrateTable()) {
+        std::cerr << "Failed to migrate table in source database: "
+                  << fmPath.string() << std::endl;
+
+        return false;
+    }
+
+    if (!from.createTriggers()) {
+        std::cerr << "Warning: Failed to create triggers in source database: "
+                  << fmPath.string() << std::endl;
+    }
+
+    
+
     std::vector<StuInfo3::Student> students = from.getAllStudent();
 
     if (!to.openDatabase(toPath)) {
@@ -442,6 +617,25 @@ bool impOrExp::importFromDB(
                   << toPath.string() << std::endl;
 
         return false;
+    }
+
+    if (!to.createTable()) {
+        std::cerr << "Failed to create table in target database: "
+                  << toPath.string() << std::endl;
+
+        return false;
+    }
+
+    if (!to.migrateTable()) {
+        std::cerr << "Failed to migrate table in target database: "
+                  << toPath.string() << std::endl;
+
+        return false;
+    }
+
+    if (!to.createTriggers()) {
+        std::cerr << "Warning: Failed to create triggers in target database: "
+                  << toPath.string() << std::endl;
     }
 
     if (!to.insertStudents(students)) {
@@ -553,9 +747,19 @@ ____) | |_| |_| | (_| |  __/ | | | |_| |  | | (_| | | | | (_| | (_| |  __/ |
     std::cout << "Successfully connected to the database." << std::endl;
     log.log("Successfully connected to the database: " + data_file.string(), 2);
     if (!manager.createTable()) {
+        std::cerr << "Failed to create table in database" << std::endl;
+        log.log("Failed to create table in database: " + data_file.string(), 0);
         return 10;
     }
-
+    if (!manager.migrateTable()) {         
+        std::cerr << "Failed to migrate table" << std::endl;
+        log.log("Migration failed: " + data_file.string(), 0);
+        return 11;
+    }
+    if (!manager.createTriggers()) {
+        std::cerr << "Warning: Failed to create triggers" << std::endl;
+        log.log("Failed to create triggers in database: " + data_file.string(), 1);
+    }
     std::cout << "\nWorkplace: " << get_executable_path() << std::endl;
     log.log("Workplace: " + get_executable_path().string(), 2);
     
@@ -647,12 +851,16 @@ ____) | |_| |_| | (_| |  __/ | | | |_| |  | | (_| | | | | (_| | (_| |  __/ |
                       << "Available commands:\n"
                       << "  add         - Add a new student\n"
                       << "  delete      - Delete a student by ID\n"
+                      << "  delete <id> - Delete a student by ID without prompt\n"
                       << "  edit        - Edit a student's information by ID\n"
+                      << "  edit <id>   - Edit a student's information by ID without input id prompt\n"
                       << "  view        - View a student's information by ID\n"
+                      << "  view <id>   - View a student's information by ID without input id prompt\n"
                       << "  view-all    - View all students' information\n"
                       << "  score-range  - View score range for a subject\n"
+                      << "  score-range <subject> - View score range for a specific subject\n"
                       << "  help         - Show this help message\n"
-                      << "  quit/exit/q  - Exit the program\n"
+                      << "  quit/exit/q   - Exit the program\n"
                       << "  import/export - Import or export student data\n";
             log.log("Help information displayed.", 2);
         }

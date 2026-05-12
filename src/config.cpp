@@ -58,7 +58,20 @@ int Main::run(int argc, char **argv){
         std::filesystem::path data_file  = studir / "students.db";
         StuInfo3 manager(data_file);
         std::string_view command = argv[1];
-
+        if (!manager.createTable()) {
+            std::cerr << "Failed to create table in database" << std::endl;
+            logr.log("Failed to create table in database: " + data_file.string(), 0);
+            return 10;
+        }
+        if (!manager.migrateTable()) {          
+            std::cerr << "Failed to migrate table" << std::endl;
+            logr.log("Migration failed: " + data_file.string(), 0);
+            return 11;
+        }
+        if (!manager.createTriggers()) {
+            std::cerr << "Warning: Failed to create triggers" << std::endl;
+            logr.log("Failed to create triggers in database: " + data_file.string(), 1);
+        }
         if (command == "--version"){
             std::cout << "Student Manager version: " << StuInfo3::getVersion() << std::endl;
             logr.log("User checked version: " + StuInfo3::getVersion(), 2);
@@ -178,6 +191,11 @@ int Main::run(int argc, char **argv){
             return 0;
         } else if (command == "--score-range") {
             logr.log("User chose to view score range.", 2);
+            if (argc == 3) {
+                std::string subject = argv[2];
+                manager.scoreRangeShow(subject);
+                return 0;
+            }
             manager.scoreRangeShow();
             return 0;
         } else if (command == "--import" || command == "--export") {
@@ -195,12 +213,15 @@ int Main::run(int argc, char **argv){
                       << "Available commands:\n"
                       << "  --add         - Add a new student\n"
                       << "  --delete      - Delete a student by ID\n"
+                      << "  --delete <id> - Delete a student by ID without prompt\n"
                       << "  --edit        - Edit a student's information by ID\n"
+                      << "  --edit <id>   - Edit a student's information by ID without input id prompt\n"
                       << "  --view        - View a student's information by ID\n"
+                      << "  --view <id>   - View a student's information by ID without input id prompt\n"
                       << "  --view-all    - View all students' information\n"
                       << "  --score-range  - View score range for a subject\n"
+                      << "  --score-range <subject> - View score range for a specific subject\n"
                       << "  --help         - Show this help message\n"
-                      << "  --quit/--exit/--q  - Exit the program\n"
                       << "  --import/--export - Import or export student data\n";
             return 0;
         } else {
@@ -216,7 +237,7 @@ int Main::run(int argc, char **argv){
         while(true){
             std::cout << "Please choose the version of the program you want to run: " << std::endl;
             std::cout << "1- 0.0.1-ALPHA\n2- " << StuInfo3::getVersion() << "\nquit- Exit the program" << std::endl;
-            std::cout << ">>>#  ";
+            std::cout << ">>># ";
             std::getline(std::cin, choice);
             if (choice == "1" || choice == "1-" || choice == "0.0.1-ALPHA"){
                 logr.log("Unsafe, user chose old version.", 1);

@@ -6,7 +6,7 @@ Student Manager is currently in early alpha. Only the latest release receives se
 
 | Version       | Supported          |
 | ------------- | ------------------ |
-| 0.1.2-ALPHA   | ✅ Yes (latest)    |
+| 0.1.5-ALPHA   | ✅ Yes (latest)    |
 | 0.1.1-ALPHA   | ❌ No              |
 | 0.0.1-ALPHA   | ❌ No              |
 

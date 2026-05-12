@@ -19,7 +19,7 @@
 cmake_minimum_required(VERSION 4.3)
 #set(CMAKE_C_COMPILER /usr/bin/gcc-15)
 #set(CMAKE_CXX_COMPILER /usr/bin/g++-15)
-project(Manager VERSION 0.1.4 LANGUAGES CXX C)
+project(Manager VERSION 0.1.5 LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
