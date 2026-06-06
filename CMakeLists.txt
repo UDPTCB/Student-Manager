@@ -16,10 +16,10 @@
 # You should have received a copy of the GNU General Public License
 # along with Student Manager.  If not, see <https://www.gnu.org/licenses/>.
 
-cmake_minimum_required(VERSION 4.3)
+cmake_minimum_required(VERSION 3.21)
 #set(CMAKE_C_COMPILER /usr/bin/gcc-15)
 #set(CMAKE_CXX_COMPILER /usr/bin/g++-15)
-project(Manager VERSION 0.1.5 LANGUAGES CXX C)
+project(Manager VERSION 0.1.6 LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -32,6 +32,8 @@ endif()
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
+find_package(ftxui REQUIRED)
+
 add_executable(manager
         
         src/main.cpp
@@ -40,19 +42,24 @@ add_executable(manager
         src/stu-info.cpp
         src/stu-info3.cpp
         src/sqlite3.c
-        #src/debug.cpp
+        src/debug.cpp
         src/logger.cpp
         src/exePath.cpp
+        src/tui.cpp
 
         ${APP_ICON_RESOURCE}
 )
 
 
-# Do not use default RUNTIME DESTINATION, use custom install location instead
 install(TARGETS manager
     RUNTIME DESTINATION .  # Install to installation root directory, not bin
 )
 
+target_link_libraries(manager PRIVATE
+    ftxui::screen
+    ftxui::dom
+    ftxui::component
+)
 # Create empty Student and logs directories after installation
 # Create empty Student and logs directories after installation
 install(CODE "

@@ -19,10 +19,38 @@
  */
 #include "../include/debug.h"
 
+void debug::run(){
+    /*
+    std::string grade;
+    std::string class_value;
+    std::string id;
+    std::string name;
+    std::string age;
 
+    std::string chinese;
+    std::string math;
+    std::string english;
+    std::string physics;
+    std::string chemistry;
+    std::string biology;
+    std::string geography;
+    std::string history;
+    std::string politics;
+    
+    */
+    std::cout << "Debug mode activated. This will run some test code and may produce unexpected output." << std::endl;
+   
+    /*
+     *std::cout << "\a" << std::endl;
+     *std::cin.clear();
+     *std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+     */
+    //* int c{0};
+    //* while((c = getchar()) != '\n' && c != EOF){}
+    return;
+}
 
-
-void debug::debug() {
+void debug::debuger(){
     
     
 }

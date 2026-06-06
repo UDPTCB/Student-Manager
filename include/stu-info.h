@@ -28,7 +28,7 @@
 #include <filesystem>
 #include <vector>
 #include <algorithm>  // std::sort
-#include <sodium.h>
+
 class StudentInfo {
 private:
     struct StuInfo {

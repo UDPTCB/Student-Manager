@@ -22,6 +22,7 @@
 #include "../include/stu-info3.hpp"
 #include "../include/stu-info.h"
 //#include "../include/debug.h"
+#include "../include/tui.hpp"
 #include "../include/logger.hpp"
 #include <iostream>
 
@@ -79,12 +80,31 @@ int Main::run(int argc, char **argv){
         } else if (command == "--add"){
             logr.log("User chose to add a student.", 2);
             StuInfo3::Student newStu;
-            manager.enterStudent(newStu);
+
+            std::string id{};
+            std::cout << "ID: ";
+            std::getline(std::cin, id);
+            newStu.id = id;
             if (newStu.id.empty()) {
                 std::cout << "Student ID cannot be empty. Student not added." << std::endl;
                 logr.log("Failed to add student: empty ID", 0);
                 return 1;
             }
+            
+            if (manager.existsStudentByID(newStu.id)){
+                std::cout << "A student with ID " << newStu.id << " already exists.\n";
+                std::cout << "Student not added." << std::endl;
+                logr.log("Add student cancelled by user: " + newStu.id, 1);
+                return 1;
+            }
+
+
+            
+
+            manager.enterStudent(newStu);
+            
+           
+
             if (manager.insertStudent(newStu)){
                 std::cout << "Student added successfully." << std::endl;
                 logr.log("Student added: " + newStu.name + " (ID: " + newStu.id + ")", 2);
@@ -236,7 +256,7 @@ int Main::run(int argc, char **argv){
 
         while(true){
             std::cout << "Please choose the version of the program you want to run: " << std::endl;
-            std::cout << "1- 0.0.1-ALPHA\n2- " << StuInfo3::getVersion() << "\nquit- Exit the program" << std::endl;
+            std::cout << "1- 0.0.1-ALPHA\n2- CLI Version--" << StuInfo3::getVersion() << "\n3- TUI Version--" << tui::getVersion() << "\nquit- Exit the program" << std::endl;
             std::cout << ">>># ";
             std::getline(std::cin, choice);
             if (choice == "1" || choice == "1-" || choice == "0.0.1-ALPHA"){
@@ -251,11 +271,17 @@ int Main::run(int argc, char **argv){
                 int returnCode = stu::runStuInfo3(logr);
                 std::cout << "Return Code: " << returnCode << std::endl;
                 std::cout << std::endl;
-            } /*else if (choice == "debug"){
+            } else if (choice == "debug"){
                 logr.log("User run debug command, it will be make something strange", 1);
-                debug::debug();
+                debug dg;
+                dg.run();
+
                 std::cout << std::endl;
-            } */else if (choice == "show w"){
+            }else if (choice == "3" || choice == "3-" || choice == tui::getVersion()){
+                tui ui;
+                ui.run();
+                std::cerr << "QUIT\a\r\n" << std::endl;
+            }  else if (choice == "show w"){
                 Main::printNoWarranty();
             }   else if (choice == "show c"){
                 Main::printRedistributionConditions();

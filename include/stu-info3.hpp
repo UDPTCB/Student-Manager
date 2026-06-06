@@ -20,6 +20,7 @@
 #ifndef STUDENT3_HPP
 #define STUDENT3_HPP
 #define STUINFO_VERSION "0.1.5-ALPHA"
+#define CLI_VERSION "0.1.5-Gamma"
 #include "./sqlite3.h"
 #include "./Score_range.h"
 #include "./logger.hpp"
@@ -118,6 +119,7 @@ public:
     bool insertStudent(const Student& student);
     bool insertStudents(const std::vector<Student>& students);
     bool selectStudentByID(const std::string& id, Student& outStudent);
+    bool existsStudentByID(const std::string& id);
     std::vector<Student> getAllStudent();
     bool deleteStudentByID(const std::string& id);
     bool editStudentByID(const std::string& id);
@@ -128,7 +130,7 @@ public:
     void scoreRangeShow(std::string subject = "");
 
     // Input operations
-    void enterStudent(Student& newStu);
+    void enterStudent(Student& newStu, int mode = 0);
 
     // Static utility functions (e.g. for log file naming)
     static std::string getVersion() { return STUINFO_VERSION; }
@@ -204,6 +206,7 @@ public:
 
 // Standalone function (not a member of StuInfo3)
 namespace stu{
+
     int runStuInfo3(logger& log);
 };
 

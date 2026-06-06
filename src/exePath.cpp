@@ -26,13 +26,9 @@
 #endif
 
 std::filesystem::path get_executable_path() {
-
 #ifdef _WIN32
-
-    char buffer[MAX_PATH];
-
-    GetModuleFileNameA(NULL, buffer, MAX_PATH);
-
+    wchar_t buffer[MAX_PATH];
+    GetModuleFileNameW(NULL, buffer, MAX_PATH);
     return std::filesystem::path(buffer).parent_path();
 
 #else

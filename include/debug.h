@@ -19,13 +19,15 @@
  */
 #ifndef DEBUG_H
 #define DEBUG_H
-
-#include <vector>
-
-
-namespace debug {
-
+#include <iostream>
+class debug{
+private:
     
-    void debug();
+public:
+    debug(){};
+    ~debug() {};
+    void debuger();
+    void run();
 };
+
 #endif // DEBUG_H

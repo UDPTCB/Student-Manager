@@ -238,6 +238,7 @@ bool StuInfo3::createTriggers() {
     return true;
 }
 bool StuInfo3::insertStudent(const Student& student) {
+    
     const char* sql = R"(
         INSERT OR REPLACE INTO students (
             id, grade, class_value, name, age,
@@ -278,13 +279,19 @@ bool StuInfo3::insertStudent(const Student& student) {
     sqlite3_bind_text(stmt.get(), 17, now.c_str(), -1, SQLITE_TRANSIENT); // updated_at
 
     if (sqlite3_step(stmt.get()) != SQLITE_DONE) {
-        std::cerr << "Error inserting student: " << sqlite3_errmsg(db) << std::endl;
+        //std::cerr << "Error inserting student: " << sqlite3_errmsg(db) << std::endl;
         return false;
     }
-    std::cout << "Student inserted successfully!" << std::endl;
+    //std::cout << "Student inserted successfully!" << std::endl;
     return true;
 }
 
+bool StuInfo3::existsStudentByID(const std::string& id){
+    const char* sql = "SELECT id FROM students WHERE id = ? LIMIT 1;";
+    Statement stmt(db, sql);
+    sqlite3_bind_text(stmt.get(), 1, id.c_str(), -1, SQLITE_TRANSIENT);
+    return sqlite3_step(stmt.get()) == SQLITE_ROW;
+}
 bool StuInfo3::selectStudentByID(const std::string& id, Student& outStudent) {
     const char* sql = "SELECT grade, class_value, id, name, age, "
                       "Chinese_score, Mathematics_score, English_score, "
@@ -369,11 +376,11 @@ bool StuInfo3::deleteStudentByID(const std::string& id) {
     sqlite3_bind_text(stmt.get(), 1, id.c_str(), -1, SQLITE_TRANSIENT);
 
     if (sqlite3_step(stmt.get()) != SQLITE_DONE) {
-        std::cerr << "Failed to delete: " << id << std::endl;
+        //std::cerr << "Failed to delete: " << id << std::endl;
         return false;
     }
     
-    std::cout << "Deleted student successfully: " << id << std::endl;
+    //std::cout << "Deleted student successfully: " << id << std::endl;
     return true;
 }
 
@@ -386,7 +393,7 @@ bool StuInfo3::editStudentByID(const std::string& id) {
     }
 
     while (true) {
-        std::cout << "Edit (grade/class/id/name/age/scores): ";
+        std::cout << "Edit (grade/class/id/name/age/scores) or enter 'done' to exit: ";
         std::string choice;
         std::getline(std::cin, choice);
 
@@ -447,6 +454,9 @@ bool StuInfo3::editStudentByID(const std::string& id) {
             else if (choosesss == "politics")                         editScore("Politics",    s.Politics_score, 0);
             else    std::cout << "Invalid subject.\n";
         }
+        else if (choice == "done") {
+            break;
+        }
         else {
             std::cout << "Invalid choice\n";
             continue;
@@ -460,7 +470,7 @@ bool StuInfo3::editStudentByID(const std::string& id) {
         }
     }
     
-    
+    return false;
 }
 
 // ── Display operations ────────────────────────────────────────────────────────
@@ -521,12 +531,15 @@ void StuInfo3::scoreRangeShow(std::string subject) {
 
 // ── Input operations ──────────────────────────────────────────────────────────
 
-void StuInfo3::enterStudent(Student& newStu) {
-    std::cout << "ID: ";
-    std::getline(std::cin, newStu.id);
-    if (newStu.id.empty()) {
-        std::cout << "ID cannot be empty. Please enter a valid ID." << std::endl;
-        return;
+void StuInfo3::enterStudent(Student& newStu, int mode) {
+
+    if (mode == 0){
+        std::cout << "ID: ";
+        std::getline(std::cin, newStu.id);
+        if (newStu.id.empty()) {
+            std::cout << "ID cannot be empty. Please enter a valid ID." << std::endl;
+            return;
+        }
     }
     std::cout << "Grade: ";
     std::getline(std::cin, newStu.grade);
@@ -730,11 +743,23 @@ ____) | |_| |_| | (_| |  __/ | | | |_| |  | | (_| | | | | (_| | (_| |  __/ |
                                                                 __/ |           
                                                                 |___/  
 - Alpha Version -
-
+    
     )" << std::endl;
+    /*
+     *\033[30m : black
+     *\033[31m : red
+     *\033[32m : green
+     *\033[33m : yellow
+     *\033[34m : blue
+     *\033[35m : magenta
+     *\033[36m : cyan
+     *\033[37m : white
+     *\033[0m  : reset
+     */
     std::cout << "\033[0m";
     std::cout << "\033[34m";
-    std::cout << "Version: " << StuInfo3::getVersion() << std::endl;
+    std::cout << "Database-Version: " << StuInfo3::getVersion() << std::endl;
+    std::cout << "CLI-Version: " << CLI_VERSION << std::endl;
     std::cout << std::endl;
     std::cout << "\033[0m";
 
@@ -769,12 +794,39 @@ ____) | |_| |_| | (_| |  __/ | | | |_| |  | | (_| | | | | (_| | (_| |  __/ |
         std::getline(std::cin, choice);
         if (choice == "add") {
             StuInfo3::Student newStu;
-            manager.enterStudent(newStu);
+            std::string id{};
+            std::cout << "ID: ";
+            std::getline(std::cin, id);
+            newStu.id = id;
+            
             if (newStu.id.empty()) {
                 std::cout << "Student ID cannot be empty. Student not added." << std::endl;
                 log.log("Failed to add student: empty ID", 0);
                 continue;
             }
+
+            
+            if (manager.existsStudentByID(newStu.id)){
+                std::cout << "A student with ID " << newStu.id << " already exists. Do you want to edit it? (y/n): ";
+                std::string overwriteChoice;
+                std::getline(std::cin, overwriteChoice);
+                if (overwriteChoice != "y" && overwriteChoice != "Y") {
+                    std::cout << "Student not added." << std::endl;
+                    log.log("Add student cancelled by user: " + newStu.id, 1);
+                    continue;
+                }
+                else if (overwriteChoice == "y" || overwriteChoice == "Y") {
+                    std::cout << "Editing existing student with ID " << newStu.id << "." << std::endl;
+                    log.log("Editing existing student: " + newStu.id, 1);
+                    manager.editStudentByID(newStu.id);
+                    continue;
+                }
+            }
+
+            manager.enterStudent(newStu, 1);
+            
+            
+
             if (manager.insertStudent(newStu)){
                 std::cout << "Student added successfully." << std::endl;
                 log.log("Student added: " + newStu.name + " (ID: " + newStu.id + ")", 2);

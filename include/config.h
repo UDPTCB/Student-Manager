@@ -22,6 +22,8 @@
 #define MAIN_H
 #include <thread>
 #include <chrono>
+#include "./logger.hpp"
+#include "./debug.h"
 class Main{
 public:
     static void printGPLNotice();
