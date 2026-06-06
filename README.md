@@ -200,4 +200,4 @@ the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 ```
 
-See [LICENSE.txt](LICENSE) or <https://www.gnu.org/licenses/> for the full text.
+See [LICENSE](LICENSE.txt) or <https://www.gnu.org/licenses/> for the full text.
