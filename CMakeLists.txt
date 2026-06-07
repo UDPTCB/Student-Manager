@@ -31,8 +31,30 @@ if(WIN32)
 endif()
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
+if(MINGW)
+    message(STATUS "Static linking for MSYS2/UCRT64")
+    set(CMAKE_CXX_FLAGS "-static-libgcc -static-libstdc++ ${CMAKE_CXX_FLAGS}")
+    set(CMAKE_EXE_LINKER_FLAGS "-static ${CMAKE_EXE_LINKER_FLAGS}")
+endif()
 
-find_package(ftxui REQUIRED)
+
+include(FetchContent)
+
+FetchContent_Declare(
+    ftxui    
+    GIT_REPOSITORY https://github.com/ArthurSonzogni/ftxui
+    GIT_TAG v6.1.9            
+)
+
+#set(FTXUI_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+#set(FTXUI_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+#set(FTXUI_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+
+FetchContent_GetProperties(ftxui)
+if(NOT ftxui_POPULATED)
+  FetchContent_Populate(ftxui)
+  add_subdirectory(${ftxui_SOURCE_DIR} ${ftxui_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
 
 add_executable(manager
         
@@ -49,17 +71,18 @@ add_executable(manager
 
         ${APP_ICON_RESOURCE}
 )
+target_link_libraries(manager PRIVATE
+   ftxui::screen
 
+    ftxui::dom
+
+    ftxui::component
+)
 
 install(TARGETS manager
     RUNTIME DESTINATION .  # Install to installation root directory, not bin
 )
 
-target_link_libraries(manager PRIVATE
-    ftxui::screen
-    ftxui::dom
-    ftxui::component
-)
 # Create empty Student and logs directories after installation
 # Create empty Student and logs directories after installation
 install(CODE "
